@@ -131,7 +131,56 @@ const HTML_CONTENT = `
             transition: background-color 5000s ease-in-out 0s;
         }
         
-        #custom-tooltip {
+                /* 自定义右键菜单 */
+        #card-context-menu {
+            position: fixed;
+            z-index: 9999;
+            display: none;
+            min-width: 180px;
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
+            animation: dropdown-in 0.15s ease-out;
+        }
+        html.dark #card-context-menu {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(255,255,255,0.08);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2);
+        }
+        #card-context-menu .ctx-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+            text-align: left;
+        }
+        html.dark #card-context-menu .ctx-item { color: #cbd5e1; }
+        #card-context-menu .ctx-item:hover { background: #f0fdf4; color: #059669; }
+        html.dark #card-context-menu .ctx-item:hover { background: rgba(16,185,129,0.1); color: #34d399; }
+        #card-context-menu .ctx-item.ctx-danger:hover { background: #fef2f2; color: #ef4444; }
+        html.dark #card-context-menu .ctx-item.ctx-danger:hover { background: rgba(239,68,68,0.1); color: #f87171; }
+        #card-context-menu .ctx-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #card-context-menu .ctx-divider { height: 1px; margin: 4px 8px; background: #e2e8f0; }
+        html.dark #card-context-menu .ctx-divider { background: #334155; }
+        #card-context-menu .ctx-item.ctx-disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: default;
+        }
+#custom-tooltip {
             z-index: 100;
             transition: opacity 0.1s ease-in-out;
         }
@@ -413,6 +462,10 @@ const HTML_CONTENT = `
                     <input type="text" id="icon-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="留空自动获取">
                 </div>
                 
+                                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">内网地址</label>
+                    <input type="text" id="lanurl-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="内网 IP 或地址（可选）">
+                </div>
                 <!-- Custom Category Dropdown -->
                 <div class="relative z-20" id="category-select-wrapper">
                     <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">分类</label>
@@ -1568,6 +1621,7 @@ const HTML_CONTENT = `
         
         card.dataset.isPrivate = link.isPrivate;
         card.setAttribute('data-url', link.url);
+        card.setAttribute('data-lanurl', link.lanUrl || '');
 
         const header = document.createElement('div');
         header.className = isAppLayout 
@@ -1770,7 +1824,114 @@ const HTML_CONTENT = `
             touchStart(e);
         }, { passive: false });
 
-        // 全局关闭卡片菜单
+        
+        // ---------- 自定义右键菜单 ----------
+        const ctxMenu = document.getElementById('card-context-menu');
+        let ctxTargetLink = null;  // 当前右键点击的 link 数据对象
+        let ctxTargetCard = null;  // 当前右键点击的 card DOM
+
+        function findLinkByUrl(url) {
+            for (const cat in categories) {
+                const link = categories[cat].links.find(l => l.url === url);
+                if (link) return link;
+            }
+            return null;
+        }
+
+        function hideContextMenu() {
+            ctxMenu.style.display = 'none';
+            ctxTargetLink = null;
+            ctxTargetCard = null;
+        }
+
+        // 在卡片容器上拦截右键
+        document.addEventListener('contextmenu', (e) => {
+            const card = e.target.closest('[data-url]');
+            if (!card) { hideContextMenu(); return; }
+
+            e.preventDefault();
+            const url = card.getAttribute('data-url');
+            const lanUrl = card.getAttribute('data-lanurl') || '';
+            ctxTargetLink = findLinkByUrl(url);
+            ctxTargetCard = card;
+
+            // 根据是否有内网链接来决定是否禁用
+            const openLanBtn = ctxMenu.querySelector('[data-ctx="openLan"]');
+            const copyLanBtn = ctxMenu.querySelector('[data-ctx="copyLan"]');
+            if (lanUrl) {
+                openLanBtn.classList.remove('ctx-disabled');
+                copyLanBtn.classList.remove('ctx-disabled');
+            } else {
+                openLanBtn.classList.add('ctx-disabled');
+                copyLanBtn.classList.add('ctx-disabled');
+            }
+
+            // 编辑和删除仅登录后可用
+            const editBtn = ctxMenu.querySelector('[data-ctx="edit"]');
+            const deleteBtn = ctxMenu.querySelector('[data-ctx="delete"]');
+            if (isLoggedIn) {
+                editBtn.classList.remove('ctx-disabled');
+                deleteBtn.classList.remove('ctx-disabled');
+            } else {
+                editBtn.classList.add('ctx-disabled');
+                deleteBtn.classList.add('ctx-disabled');
+            }
+
+            // 定位菜单
+            const menuW = 200, menuH = 320;
+            let x = e.clientX, y = e.clientY;
+            if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+            if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+            if (x < 4) x = 4;
+            if (y < 4) y = 4;
+            ctxMenu.style.left = x + 'px';
+            ctxMenu.style.top = y + 'px';
+            ctxMenu.style.display = 'block';
+        });
+
+        // 点击其他区域关闭右键菜单
+        document.addEventListener('click', () => hideContextMenu());
+        document.addEventListener('scroll', () => hideContextMenu(), true);
+        window.addEventListener('resize', () => hideContextMenu());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideContextMenu(); });
+
+        // 右键菜单按钮事件
+        ctxMenu.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-ctx]');
+            if (!btn || btn.classList.contains('ctx-disabled')) return;
+            e.stopPropagation();
+            const action = btn.dataset.ctx;
+            const url = ctxTargetCard ? ctxTargetCard.getAttribute('data-url') : '';
+            const lanUrl = ctxTargetCard ? (ctxTargetCard.getAttribute('data-lanurl') || '') : '';
+
+            hideContextMenu();
+
+            if (action === 'open') {
+                const target = safeUrl(url);
+                if (target) window.open(target, '_blank', 'noopener,noreferrer');
+            } else if (action === 'copy') {
+                try { await navigator.clipboard.writeText(url); } catch {}
+            } else if (action === 'openLan') {
+                if (lanUrl) {
+                    const target = safeUrl(lanUrl);
+                    if (target) window.open(target, '_blank', 'noopener,noreferrer');
+                }
+            } else if (action === 'copyLan') {
+                if (lanUrl) {
+                    try { await navigator.clipboard.writeText(lanUrl); } catch {}
+                }
+            } else if (action === 'edit') {
+                if (ctxTargetLink) showEditDialog(ctxTargetLink);
+            } else if (action === 'delete') {
+                if (ctxTargetCard && ctxTargetLink) {
+                    if (await customConfirm('确定要删除「' + ctxTargetLink.name + '」吗？')) {
+                        await removeCard(ctxTargetCard);
+                    }
+                }
+            }
+        });
+        // ---------- 自定义右键菜单 END ----------
+// 全局关闭卡片菜单
         if (!window.hasAddedCardMenuListener) {
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.card-menu-dropdown') && !e.target.closest('button')) {
@@ -1861,7 +2022,8 @@ const HTML_CONTENT = `
             name, url, category,
             tips: document.getElementById('tips-input').value.trim(),
             icon: document.getElementById('icon-input').value.trim(),
-            isPrivate: document.getElementById('private-checkbox').checked
+            isPrivate: document.getElementById('private-checkbox').checked,
+            lanUrl: document.getElementById('lanurl-input').value.trim()
         };
 
         hideAddDialog();
@@ -2385,6 +2547,7 @@ const HTML_CONTENT = `
         document.getElementById('tips-input').value = link.tips || '';
         document.getElementById('icon-input').value = link.icon || '';
         document.getElementById('private-checkbox').checked = link.isPrivate;
+        document.getElementById('lanurl-input').value = link.lanUrl || '';
         
         const linkCategory = link.category || (() => {
             for (const c in categories) if (categories[c].links.some(l => l.url === link.url)) return c;
@@ -2716,7 +2879,8 @@ const HTML_CONTENT = `
                     const src = child.icon.src.trim();
                     if (/^https?:\\/\\//i.test(src)) icon = src;
                 }
-                links.push({ name, url, tips, icon, category: catName, isPrivate: false, isDirect: false });
+                const lanUrl = (child.lanUrl || '').trim();
+                links.push({ name, url, tips, icon, lanUrl, category: catName, isPrivate: false, isDirect: false });
             }
             if (links.length > 0) categories[catName] = { isHidden: false, links };
         }
@@ -2881,7 +3045,36 @@ const HTML_CONTENT = `
     }
 
     </script>
-</body>
+    <!-- 自定义右键菜单 -->
+    <div id="card-context-menu">
+        <button class="ctx-item" data-ctx="open">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            打开链接
+        </button>
+        <button class="ctx-item" data-ctx="copy">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            复制链接
+        </button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item" data-ctx="openLan">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            打开内网链接
+        </button>
+        <button class="ctx-item" data-ctx="copyLan">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            复制内网链接
+        </button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item" data-ctx="edit">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            编辑
+        </button>
+        <button class="ctx-item ctx-danger" data-ctx="delete">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            删除
+        </button>
+    </div>
+    </body>
 </html>
 `;
 
@@ -3441,6 +3634,7 @@ function validateCategories(raw) {
 
             if (l.tips != null && typeof l.tips !== 'string') return { ok: false, reason: 'BAD_TIPS' };
             if (l.icon != null && typeof l.icon !== 'string') return { ok: false, reason: 'BAD_ICON' };
+            if (l.lanUrl != null && typeof l.lanUrl !== 'string') return { ok: false, reason: 'BAD_LANURL' };
             for (const flag of ['isPrivate', 'isDirect']) {
                 if (l[flag] != null && typeof l[flag] !== 'boolean') return { ok: false, reason: 'BAD_FLAG' };
             }
@@ -3463,6 +3657,7 @@ function sanitizeCategories(raw) {
                 icon: l.icon ? String(l.icon).slice(0, MAX_URL) : '',
                 isPrivate: !!l.isPrivate,
                 isDirect: !!l.isDirect,
+                lanUrl: l.lanUrl ? String(l.lanUrl).slice(0, MAX_URL) : '',
                 // 保留/回填分类归属：优先用传入值，缺失则用所在分类 key，避免 link.category 丢失后变成 undefined 分类
                 category: l.category ? String(l.category).slice(0, MAX_NAME) : name,
             })),
@@ -3492,7 +3687,8 @@ function convertSunPanelToCardTab(data) {
                 const src = child.icon.src.trim();
                 if (/^https?:\/\//i.test(src)) icon = src;
             }
-            links.push({ name, url, tips, icon, category: catName, isPrivate: false, isDirect: false });
+            const lanUrl = (child.lanUrl || '').trim();
+            links.push({ name, url, tips, icon, lanUrl, category: catName, isPrivate: false, isDirect: false });
         }
         if (links.length > 0) categories[catName] = { isHidden: false, links };
     }
