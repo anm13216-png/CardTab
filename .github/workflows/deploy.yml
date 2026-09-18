@@ -41,7 +41,7 @@ jobs:
               "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces" \
               -H "Authorization: Bearer ${CF_API_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\\"title\\":\\"card-tab-CARD_ORDER\\"}")
+              --data '{"title":"card-tab-CARD_ORDER"}')
             KV_ID=$(echo "$CREATE_RESULT" | jq -r '.result.id // empty')
             if [ -z "$KV_ID" ]; then
               echo "Failed to create KV namespace"
