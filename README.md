@@ -60,47 +60,39 @@
   - ✅ Chrome / Edge 浏览器书签 HTML
 - ⚡ **边缘缓存** — HTML 响应支持 ETag + Cloudflare 边缘缓存
 
-## 🤖 GitHub Actions 自动部署（推荐）
+## 🚀 部署指南
 
-本项目已内置 GitHub Actions 工作流配置文件 (.github/workflows/deploy.yml)。只需在 GitHub 仓库中配置 2 个密钥，每次向 master 分支 git push 代码时，系统就会**全自动编译并部署**到你的 Cloudflare Workers。
+### 方案一：GitHub Actions 全自动部署（推荐 ⭐⭐⭐⭐⭐）
 
-### 配置步骤：
+配置一次后，每次向 GitHub 仓库 Push 代码即可自动发布到 Cloudflare Workers，无需本地安装 CLI 工具。
 
-1. **获取 Cloudflare API Token**：
-   - 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)
-   - 右上角头像 → **My Profile** → **API Tokens** → **Create Token**
-   - 使用 **Edit Cloudflare Workers** 模板创建 Token 并复制。
+#### 第一步：获取 Cloudflare 密钥
+1. 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)
+2. **Account ID**：在控制台主页右侧边栏找到并复制 Account ID
+3. **API Token**：点击右上角头像 → **My Profile** → **API Tokens** → **Create Token** → 选择 **Edit Cloudflare Workers** 模板生成 Token
 
-2. **获取 Account ID**：
-   - 在 Cloudflare 控制台右侧边栏找到 **Account ID** 并复制。
+#### 第二步：在 GitHub 仓库添加 Secrets
+1. 进入 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
+2. 点击 **New repository secret** 添加以下两个变量：
+   - CLOUDFLARE_API_TOKEN: 填入刚才创建的 API Token
+   - CLOUDFLARE_ACCOUNT_ID: 填入你的 Account ID
 
-3. **在 GitHub 仓库添加 Secrets**：
-   - 进入你的 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
-   - 点击 **New repository secret** 添加以下两个变量：
-     - CLOUDFLARE_API_TOKEN: 填入刚才创建的 API Token
-     - CLOUDFLARE_ACCOUNT_ID: 填入你的 Account ID
-
-设置完成后，以后每次你在本地提交代码或直接修改 GitHub 仓库代码，GitHub Actions 就会自动将项目部署到你的 Cloudflare Workers，无需在本地安装 Wrangler。
+#### 第三步：自动发布
+以后每次执行 git push 提交代码，GitHub Actions 都会全自动编译并部署至 Cloudflare Workers。
 
 ---
 
-## 🚀 部署指南
+### 方案二：本地 CLI / Wrangler 手动部署
 
-### 前置条件
+如果你喜欢在本地通过命令行部署，可以按照以下步骤操作：
 
-- 一个 [Cloudflare](https://dash.cloudflare.com/) 账号
-- 安装 [Node.js](https://nodejs.org/)（≥ 16）和 [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
-
-### 第一步：创建 KV 命名空间
-
+#### 第一步：创建 KV 命名空间
 `ash
 wrangler kv namespace create "CARD_ORDER"
 `
+记下输出的 id。
 
-记下输出的 id，后面要用。
-
-### 第二步：配置 wrangler.toml
-
+#### 第二步：配置 wrangler.toml
 `	oml
 name = "card-tab"
 main = "worker.js"
@@ -114,11 +106,9 @@ kv_namespaces = [
 DEFAULT_USER = "admin"
 ICON_API = "https://api.xinac.net/icon/?url="
 PREFER_ICON_API = "true"
-# ALLOWED_ORIGINS = "https://your-domain.com"  # 可选：限制 CORS 来源
 `
 
-### 第三步：配置 Secrets（敏感信息）
-
+#### 第三步：配置 Secrets（敏感信息）
 `ash
 # JWT 密钥（≥ 32 字符的随机字符串）
 wrangler secret put JWT_SECRET
@@ -127,13 +117,10 @@ wrangler secret put JWT_SECRET
 wrangler secret put ADMIN_PASSWORD
 `
 
-### 第四步：部署
-
+#### 第四步：部署
 `ash
 wrangler deploy
 `
-
-部署成功后访问 Worker 分配的 URL 即可使用。
 
 ## ⚙️ 环境变量说明
 
