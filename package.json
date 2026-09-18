@@ -1,0 +1,25 @@
+{
+  "name": "card-tab",
+  "version": "2.0.0",
+  "description": "Card Tab - 个人导航书签页 (Cloudflare Workers)",
+  "main": "worker.js",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && wrangler dev dist/worker.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axzcnzxis/CardTab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/axzcnzxis/CardTab/issues"
+  },
+  "homepage": "https://github.com/axzcnzxis/CardTab#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
