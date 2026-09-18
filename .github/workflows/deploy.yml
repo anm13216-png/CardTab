@@ -1,16 +1,12 @@
 name: Deploy to Cloudflare Workers
 
 on:
-  push:
-    branches:
-      - master
-      - main
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Build & Deploy
+    name: Build and Deploy
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,10 +19,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build (esbuild bundle)
+      - name: Build
         run: npm run build
 
-      # ── Step 1: 自动创建/获取 KV Namespace ──
       - name: Setup KV Namespace
         id: kv
         env:
@@ -34,38 +29,32 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           KV_TITLE="card-tab-CARD_ORDER"
-
-          echo "🔍 Checking for existing KV namespace: ${KV_TITLE}"
+          echo "Checking for existing KV namespace..."
           EXISTING=$(curl -s -X GET \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces?per_page=100" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json")
-
           KV_ID=$(echo "$EXISTING" | jq -r --arg title "$KV_TITLE" '.result[] | select(.title == $title) | .id // empty')
-
           if [ -z "$KV_ID" ]; then
-            echo "📦 Creating new KV namespace: ${KV_TITLE}"
+            echo "Creating new KV namespace..."
             CREATE_RESULT=$(curl -s -X POST \
               "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces" \
               -H "Authorization: Bearer ${CF_API_TOKEN}" \
               -H "Content-Type: application/json" \
-              --data "{\"title\":\"${KV_TITLE}\"}")
-
+              --data "{\\"title\\":\\"card-tab-CARD_ORDER\\"}")
             KV_ID=$(echo "$CREATE_RESULT" | jq -r '.result.id // empty')
             if [ -z "$KV_ID" ]; then
-              echo "❌ Failed to create KV namespace"
+              echo "Failed to create KV namespace"
               echo "$CREATE_RESULT" | jq .
               exit 1
             fi
-            echo "✅ Created KV namespace: ${KV_ID}"
+            echo "Created KV namespace: $KV_ID"
           else
-            echo "✅ Found existing KV namespace: ${KV_ID}"
+            echo "Found existing KV namespace: $KV_ID"
           fi
+          echo "kv_id=$KV_ID" >> $GITHUB_OUTPUT
 
-          echo "kv_id=${KV_ID}" >> $GITHUB_OUTPUT
-
-      # ── Step 2: 准备明文变量并配置 wrangler.toml ──
-      - name: Prepare Plain Text Variables & Update wrangler.toml
+      - name: Prepare Variables and Deploy Config
         id: vars
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -75,20 +64,13 @@ jobs:
           INPUT_ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           WORKER_NAME="card-tab"
-
-          # 1. 替换 KV_ID
           KV_ID="${{ steps.kv.outputs.kv_id }}"
           sed -i "s/PLACEHOLDER/${KV_ID}/g" wrangler.toml
-
-          # 2. 提取变量（优先使用用户在 GitHub Secrets 填的值，无则自动生成）
-          # ADMIN_USERNAME
           if [ -n "$INPUT_ADMIN_USERNAME" ]; then
             USERNAME_VAL="$INPUT_ADMIN_USERNAME"
           else
             USERNAME_VAL="admin"
           fi
-
-          # ADMIN_PASSWORD (8 位)
           if [ -n "$INPUT_ADMIN_PASSWORD" ]; then
             PASSWORD_VAL="$INPUT_ADMIN_PASSWORD"
           else
@@ -97,26 +79,17 @@ jobs:
               PASSWORD_VAL="admin123"
             fi
           fi
-
-          # JWT_SECRET (64 位)
           if [ -n "$INPUT_JWT_SECRET" ]; then
             JWT_VAL="$INPUT_JWT_SECRET"
           else
             JWT_VAL=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
           fi
-
-          # 3. 将变量追加写入 wrangler.toml 的 [vars] 中 (以明文变量形式部署)
-          cat << EOF >> wrangler.toml
-
-ADMIN_USERNAME = "${USERNAME_VAL}"
-ADMIN_PASSWORD = "${PASSWORD_VAL}"
-JWT_SECRET = "${JWT_VAL}"
-EOF
-
-          echo "📝 Updated wrangler.toml with plain text variables:"
+          echo "" >> wrangler.toml
+          echo "ADMIN_USERNAME = \"${USERNAME_VAL}\"" >> wrangler.toml
+          echo "ADMIN_PASSWORD = \"${PASSWORD_VAL}\"" >> wrangler.toml
+          echo "JWT_SECRET = \"${JWT_VAL}\"" >> wrangler.toml
+          echo "Updated wrangler.toml:"
           cat wrangler.toml
-
-          # 4. 清理 Cloudflare 上历史遗留的加密 secrets (暗文“值已加密”，避免遮挡明文变量)
           delete_secret() {
             local sec_name=$1
             curl -s -X DELETE \
@@ -124,40 +97,28 @@ EOF
               -H "Authorization: Bearer ${CF_API_TOKEN}" \
               -H "Content-Type: application/json" >/dev/null 2>&1 || true
           }
-
-          echo "🧹 Cleaning up legacy encrypted secret_text bindings if any..."
           delete_secret "ADMIN_USERNAME"
           delete_secret "ADMIN_PASSWORD"
           delete_secret "JWT_SECRET"
-
-          # 输出到 GITHUB_OUTPUT 供摘要显示
           echo "username=${USERNAME_VAL}" >> $GITHUB_OUTPUT
           echo "password=${PASSWORD_VAL}" >> $GITHUB_OUTPUT
           echo "jwt_secret=${JWT_VAL}" >> $GITHUB_OUTPUT
 
-      # ── Step 3: 部署 Worker (包含明文变量) ──
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # ── Step 4: 部署摘要 ──
       - name: Deployment Summary
         run: |
           echo ""
-          echo "╔══════════════════════════════════════════════════╗"
-          echo "║          🚀 Card Tab 部署成功！                   ║"
-          echo "╠══════════════════════════════════════════════════╣"
-          echo "║                                                  ║"
-          echo "║  📌 Worker:          card-tab                    ║"
-          echo "║  📦 KV ID:           ${{ steps.kv.outputs.kv_id }}"
-          echo "║                                                  ║"
-          echo "║  👤 ADMIN_USERNAME:  ${{ steps.vars.outputs.username }}"
-          echo "║  🔒 ADMIN_PASSWORD:  ${{ steps.vars.outputs.password }}"
-          echo "║  🔑 JWT_SECRET:      ${{ steps.vars.outputs.jwt_secret }}"
-          echo "║                                                  ║"
-          echo "║  💡 在 Cloudflare Dashboard 查看/修改明文变量:    ║"
-          echo "║     Workers > card-tab > Settings > Variables     ║"
-          echo "║                                                  ║"
-          echo "╚══════════════════════════════════════════════════╝"
+          echo "=========================================="
+          echo "  Card Tab Deploy Success!"
+          echo "=========================================="
+          echo "  Worker:          card-tab"
+          echo "  KV ID:           ${{ steps.kv.outputs.kv_id }}"
+          echo "  ADMIN_USERNAME:  ${{ steps.vars.outputs.username }}"
+          echo "  ADMIN_PASSWORD:  ${{ steps.vars.outputs.password }}"
+          echo "  JWT_SECRET:      ${{ steps.vars.outputs.jwt_secret }}"
+          echo "=========================================="
