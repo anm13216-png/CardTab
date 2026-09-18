@@ -151,11 +151,11 @@ EOF
           echo "╠══════════════════════════════════════════════════╣"
           echo "║                                                  ║"
           echo "║  📌 Worker:          card-tab                    ║"
-          echo "║  📦 KV ID:           ${{ steps.kv.outputs.kv_id }}
+          echo "║  📦 KV ID:           ${{ steps.kv.outputs.kv_id }}"
           echo "║                                                  ║"
-          echo "║  👤 ADMIN_USERNAME:  ${{ steps.vars.outputs.username }}
-          echo "║  🔒 ADMIN_PASSWORD:  ${{ steps.vars.outputs.password }}
-          echo "║  🔑 JWT_SECRET:      ${{ steps.vars.outputs.jwt_secret }}
+          echo "║  👤 ADMIN_USERNAME:  ${{ steps.vars.outputs.username }}"
+          echo "║  🔒 ADMIN_PASSWORD:  ${{ steps.vars.outputs.password }}"
+          echo "║  🔑 JWT_SECRET:      ${{ steps.vars.outputs.jwt_secret }}"
           echo "║                                                  ║"
           echo "║  💡 在 Cloudflare Dashboard 查看/修改明文变量:    ║"
           echo "║     Workers > card-tab > Settings > Variables     ║"

@@ -1,7 +1,3 @@
-﻿# Card Tab - 个人导航书签页
-[MIT](LICENSE)
-
-[MIT](LICENSE)
 # Card Tab - 个人导航书签页
 
 <p align="center">
@@ -15,6 +11,8 @@
 </p>
 
 一个部署在 **Cloudflare Workers** 上的全栈导航书签页。使用 esbuild 模块化构建，GitHub Actions **全自动部署**，数据存储在 Cloudflare KV 中。
+
+---
 
 ## ✨ 功能特性
 
@@ -51,7 +49,8 @@
 - ✨ **流畅动画** — 弹窗、下拉菜单等交互动画
 
 ### 🔐 安全特性
-- 👤 **用户名 + 密码登录** — 管理员用户名密码双重认证
+- 👤 **用户名 + 密码登录** — 管理员用户名与密码双重认证
+- 🔑 **明文变量可视化** — 部署后的 `ADMIN_USERNAME`、`ADMIN_PASSWORD`（默认 8 位随机密码）与 `JWT_SECRET`（默认 64 位随机串）在 Cloudflare 控制台直接以明文环境变量形式展示，便于管理员查看与调整，避免隐藏为“值已加密”
 - 🎫 **JWT 双令牌** — Access Token（2h）+ Refresh Token（30天，HttpOnly Cookie）
 - 🛡️ **登录限速** — 基于 IP 的速率限制，5 次失败锁定 15 分钟
 - ⏱️ **时序安全** — 用户名与密码比较均使用恒定时间算法，防止计时攻击
@@ -60,10 +59,7 @@
 ### 📦 数据管理
 - 💾 **智能备份** — 数据变更时自动备份，10 分钟内不重复备份，自动保留最近 10 份
 - 📤 **数据导出** — 一键导出完整 JSON 数据
-- 📥 **多格式导入** — 支持以下格式：
-  - ✅ Card Tab 原生 JSON
-  - ✅ **Sun-Panel 导出 JSON**（自动检测转换）
-  - ✅ Chrome / Edge 浏览器书签 HTML
+- 📥 **多格式导入** — 支持 Card Tab 原生 JSON、**Sun-Panel 导出 JSON**（自动检测转换）、Chrome / Edge 浏览器书签 HTML
 - ⚡ **边缘缓存** — HTML 响应支持 ETag + Cloudflare 边缘缓存
 
 ---
@@ -91,121 +87,47 @@
      | 帐户 | **Workers KV 存储** | 编辑 |
      | 帐户 | **Worker 脚本** | 编辑 |
 
-     > ⚠️ 注意：「Workers KV 存储」和「Worker 脚本」是 **两个不同的权限类别**，需要分别添加两行。搜索时输入「Workers KV」找到存储权限，输入「Worker 脚本」找到脚本权限。
+     > ⚠️ 注意：「Workers KV 存储」和「Worker 脚本」是 **两个不同的权限类别**，需要分别添加两行。
 
-   - 帐户资源选择「包括 - 所有帐户」
-   - 点击 **继续以显示摘要** → **创建令牌**，复制生成的 Token
+#### 第三步：设置 GitHub Repository Secrets
 
-#### 第三步：在 GitHub 仓库添加 Secrets
+在 GitHub 项目仓库页面：
+1. 进入 **Settings** → **Secrets and variables** → **Actions**
+2. 点击 **New repository secret**，添加以下必须变量：
+   - `CLOUDFLARE_ACCOUNT_ID`: 你的 Cloudflare Account ID
+   - `CLOUDFLARE_API_TOKEN`: 你的 Cloudflare API Token
 
-进入你 Fork 的仓库 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**：
+*(可选)* 如果需要自定义登录账号密码与 JWT 密钥，可以额外配置：
+- `ADMIN_USERNAME`: 管理员账号（未配置则默认 `admin`）
+- `ADMIN_PASSWORD`: 管理员密码（未配置则默认生成 8 位随机密码）
+- `JWT_SECRET`: JWT 签名密钥（未配置则默认生成 64 位随机密钥）
 
-| Secret 名称 | 必填 | 说明 |
-|---|---|---|
-| `CLOUDFLARE_API_TOKEN` | ✅ | 上一步创建的 API Token |
-| `CLOUDFLARE_ACCOUNT_ID` | ✅ | Cloudflare Account ID |
-| `ADMIN_USERNAME` | ❌ | 管理员用户名，不设则默认 `admin` |
-| `ADMIN_PASSWORD` | ❌ | 管理员密码，不设则自动生成 8 位随机密码 |
-| `JWT_SECRET` | ❌ | JWT 签名密钥，不设则自动生成 64 位随机串 |
+#### 第四步：自动部署与运行
 
-> 只需设置前两项即可完成部署，其余均自动处理。
-
-#### 第四步：触发部署
-
-- **方式一**：推送代码到 `master` 分支，自动触发部署
-- **方式二**：进入 **Actions** → **Deploy to Cloudflare Workers** → **Run workflow** 手动触发
-
-#### 部署流水线自动完成以下工作：
-
-```
-📦 构建打包 (esbuild)
-    ↓
-🗄️ 创建 KV 命名空间（已有则自动复用）
-    ↓
-📝 动态配置 wrangler.toml
-    ↓
-🚀 部署 Worker 到 Cloudflare
-    ↓
-🔑 写入 JWT_SECRET / ADMIN_USERNAME / ADMIN_PASSWORD
-    ↓
-📋 输出部署摘要
-```
-
-#### 第五步：查看自动生成的凭据
-
-首次部署后，如果你没有手动设置密码等参数，系统会自动生成。
-
-前往 **Cloudflare Dashboard** → **Workers & Pages** → **card-tab** → **Settings** → **Variables and Secrets**，即可查看自动生成的管理员用户名、密码和 JWT 密钥。
-
-> ⚠️ **重要提示**：后续重新部署 **不会覆盖** 已有的密钥和密码，你的数据和凭据始终安全。
-
-
-### ❗ 常见部署问题
-
-#### 错误：`You need to register a workers.dev subdomain`
-
-如果部署时 GitHub Actions 日志出现以下错误：
-
-```
-⚠ You need to register a workers.dev subdomain before publishing to workers.dev
-✘ You can either deploy your worker to one or more routes by specifying them in wrangler.toml,
-  or register a workers.dev subdomain here:
-  https://dash.cloudflare.com/***/workers/onboarding
-```
-
-这是因为你的 Cloudflare 账号 **尚未开通 workers.dev 子域名**。有两种解决方法：
-
-**方法一：注册 workers.dev 子域名（推荐，30 秒搞定）**
-
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. 进入 **Workers & Pages**
-3. 点击页面上方的 **设置子域名** 提示（或在概览页右侧找到 `workers.dev` 子域名设置）
-4. 选择一个你喜欢的子域名（如 `myname`），确认注册
-5. 回到 GitHub Actions，点击 **Re-run all jobs** 重新运行
-
-注册完成后，你的网站地址将是：`https://card-tab.你的子域名.workers.dev`
-
-**方法二：绑定自定义域名**
-
-如果你有自己的域名（已添加到 Cloudflare），可以跳过 workers.dev，直接绑定自定义域名：
-
-1. 确保你的域名已添加到 Cloudflare 并完成 DNS 托管
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages**
-3. 找到 `card-tab` Worker（如果是首次部署失败，需要先用方法一完成一次部署，或在本地用 `npx wrangler deploy` 部署一次）
-4. 点击 **card-tab** → **Settings** → **Domains & Routes**
-5. 点击 **Add** → **Custom domain**
-6. 输入你想绑定的域名（如 `nav.example.com`）
-7. Cloudflare 会自动添加 DNS 记录，点击确认即可
-
-或者，你也可以直接在 `wrangler.toml` 中配置路由（需要取消注释并修改）：
-
-```toml
-# 在 wrangler.toml 末尾添加自定义域名路由（可选）
-# routes = [
-#   { pattern = "nav.example.com", custom_domain = true }
-# ]
-```
-
-> 💡 **提示**：绑定自定义域名后，即使没有注册 workers.dev 子域名也可以正常使用。
+1. 推送代码到 `main` 或 `master` 分支，或在 **Actions** 页面手动点击 **Run workflow**。
+2. 部署成功后，展开 GitHub Actions 构建日志的 **Deployment Summary（部署摘要）** 步骤，即可看到为你生成的登录账号、密码及部署状态。
+3. 部署完成后，在 Cloudflare Dashboard：**Workers & Pages** -> **card-tab** -> **Settings (设置)** -> **Variables (变量)** 中可以直接以明文方式查看/修改 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD`。
 
 ---
 
-### 本地开发
+## ❓ 常见报错与排查 (Troubleshooting)
 
-```bash
-# 克隆项目
-git clone https://github.com/axzcnzxis/CardTab.git
-cd CardTab
+### 报错：`Error: The process '/opt/hostedtoolcache/node/20.20.2/x64/bin/npx' failed with exit code 1`
 
-# 安装依赖
-npm install
+**原因**：
+Cloudflare 账号未初始化或开启 `*.workers.dev` 免费二级域名子域，导致 Wrangler 在尝试发布到默认 workers.dev 域名时失败退场。
 
-# 构建
-npm run build
+**解决方案：绑定自定义域名（Custom Domain）**
 
-# 本地开发（需先在 wrangler.toml 中填入你的 KV namespace ID）
-npm run dev
-```
+为你部署的 Worker 绑定一个自己的域名，操作步骤如下：
+
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)，在左侧导航栏选择 **Workers 和 Pages (Workers & Pages)**。
+2. 点击刚部署生成的 **`card-tab`** 服务进入详情页。
+3. 切换到 **设置 (Settings)** 选项卡，然后点击左侧的 **触发器 (Triggers)**。
+4. 在 **自定义域名 (Custom Domains)** 区域，点击 **添加自定义域名 (Add Custom Domain)** 按钮。
+5. 输入你已托管在 Cloudflare 上的域名或子域名（例如：`nav.yourdomain.com`）。
+6. 点击 **添加自定义域名** 确认，Cloudflare 会自动完成 DNS 解析与 SSL 证书配置（通常在 5 秒内生效）。
+7. 绑定完成后，直接在浏览器访问你的自定义域名（如 `https://nav.yourdomain.com`）即可正常打开 Card Tab。
 
 ---
 
@@ -213,10 +135,10 @@ npm run dev
 
 | 变量名 | 类型 | 必填 | 说明 | 默认值 |
 |--------|------|------|------|--------|
-| `JWT_SECRET` | Secret | ✅ | JWT 签名密钥，≥ 32 字符 | CI 自动生成 64 位随机串 |
-| `ADMIN_USERNAME` | Secret | ✅ | 管理员用户名 | `admin` |
-| `ADMIN_PASSWORD` | Secret | ✅ | 管理员登录密码，≥ 8 字符 | CI 自动生成 8 位随机密码 |
-| `CARD_ORDER` | KV Binding | ✅ | KV 命名空间绑定 | CI 自动创建 |
+| `JWT_SECRET` | Environment Variable / Secret | ✅ | JWT 签名密钥 | CI 自动生成 64 位随机串，在 CF 后台明文显示 |
+| `ADMIN_USERNAME` | Environment Variable / Secret | ✅ | 管理员用户名 | `admin` ，在 CF 后台明文显示 |
+| `ADMIN_PASSWORD` | Environment Variable / Secret | ✅ | 管理员登录密码 | CI 自动生成 8 位随机密码，在 CF 后台明文显示 |
+| `CARD_ORDER` | KV Binding | ✅ | KV 命名空间绑定 | CI 自动创建并绑定 |
 | `DEFAULT_USER` | Variable | ❌ | 默认用户标识 | `admin` |
 | `ICON_API` | Variable | ❌ | 网站图标 API 地址 | `https://api.xinac.net/icon/?url=` |
 | `PREFER_ICON_API` | Variable | ❌ | 是否优先使用图标 API | `true` |
@@ -259,13 +181,6 @@ Card Tab 支持多种图标设置方式：
 3. 选择 Sun-Panel 导出的 `.json` 文件
 4. 系统自动检测格式并转换，无需手动处理
 
-**支持转换的内容：**
-- ✅ 所有分组和书签
-- ✅ 分组排序
-- ✅ 书签名称、URL、描述
-- ✅ 完整 URL 格式的图标
-- ⚠️ Sun-Panel 内部上传的图标（`/uploads/...` 路径）无法迁移，Card Tab 会自动获取网站 favicon 替代
-
 ---
 
 ## 📁 项目结构
@@ -277,42 +192,20 @@ CardTab/
 ├── wrangler.toml             # Cloudflare Workers 部署配置
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml        # GitHub Actions 全自动部署流水线
+│       └── deploy.yml        # GitHub Actions 全自动部署流水线 (已修复语法)
 ├── src/
 │   ├── worker.js             # Worker 入口：路由分发
 │   ├── api/
 │   │   ├── auth.js           # 登录/登出/Token 刷新与验证
-│   │   ├── links.js          # 书签 CRUD（getLinks / saveData）
+│   │   ├── links.js          # 书签 CRUD
 │   │   ├── backup.js         # 备份/导出/导入（含 Sun-Panel 转换）
-│   │   └── icon.js           # 图标代理（handleIconProxy）
-│   ├── utils/
-│   │   ├── jwt.js            # JWT 创建/验证/base64url 编解码
-│   │   ├── crypto.js         # 恒定时间字符串比较
-│   │   ├── kv.js             # KV 读写封装
-│   │   ├── cache.js          # 边缘缓存操作
-│   │   ├── response.js       # CORS / assertEnv / JSON 响应工具
-│   │   ├── validate.js       # 数据校验与清理
-│   │   └── config.js         # 运行时配置管理
+│   │   └── icon.js           # 图标代理
+│   ├── utils/                # 工具库
 │   └── frontend/
-│       └── index.html        # 完整前端 HTML 模板（含内联 JS / CSS）
+│       └── index.html        # 前端 HTML 模板
 └── dist/
-    └── worker.js             # 构建产物（CI 自动生成，不提交 Git）
+    └── worker.js             # 构建产物（CI 自动生成）
 ```
-
----
-
-## 🛠️ 技术栈
-
-| 领域 | 技术 |
-|------|------|
-| **运行时** | Cloudflare Workers（V8 Isolates） |
-| **构建工具** | esbuild — 模块化开发，单文件打包 |
-| **前端框架** | Tailwind CSS（CDN） |
-| **认证方案** | JWT（HMAC-SHA256）— 用户名 + 密码 |
-| **数据存储** | Cloudflare KV |
-| **缓存策略** | ETag + Cloudflare Cache API |
-| **图标服务** | [Iconify API](https://api.iconify.design/) + 自定义 Favicon API |
-| **CI/CD** | GitHub Actions — 全自动部署 |
 
 ---
 
