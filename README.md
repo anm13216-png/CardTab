@@ -80,10 +80,17 @@
 2. **Account ID**：在控制台主页右侧边栏找到并复制
 3. **API Token**：
    - 点击右上角头像 → **My Profile** → **API Tokens** → **Create Token**
-   - 选择 **Create Custom Token**，设置以下权限：
-     - `Account` / `Workers KV Storage` / `Edit`
-     - `Account` / `Workers Scripts` / `Edit`
-   - 点击 **Continue to summary** → **Create Token**，复制生成的 Token
+   - 选择 **创建自定义令牌**（Create Custom Token），添加 **两条** 权限：
+
+     | 资源类型 | 权限名称 | 操作 |
+     |---------|---------|------|
+     | 帐户 | **Workers KV 存储** | 编辑 |
+     | 帐户 | **Worker 脚本** | 编辑 |
+
+     > ⚠️ 注意：「Workers KV 存储」和「Worker 脚本」是 **两个不同的权限类别**，需要分别添加两行。搜索时输入「Workers KV」找到存储权限，输入「Worker 脚本」找到脚本权限。
+
+   - 帐户资源选择「包括 - 所有帐户」
+   - 点击 **继续以显示摘要** → **创建令牌**，复制生成的 Token
 
 #### 第三步：在 GitHub 仓库添加 Secrets
 
