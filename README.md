@@ -60,6 +60,30 @@
   - ✅ Chrome / Edge 浏览器书签 HTML
 - ⚡ **边缘缓存** — HTML 响应支持 ETag + Cloudflare 边缘缓存
 
+## 🤖 GitHub Actions 自动部署（推荐）
+
+本项目已内置 GitHub Actions 工作流配置文件 (.github/workflows/deploy.yml)。只需在 GitHub 仓库中配置 2 个密钥，每次向 master 分支 git push 代码时，系统就会**全自动编译并部署**到你的 Cloudflare Workers。
+
+### 配置步骤：
+
+1. **获取 Cloudflare API Token**：
+   - 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)
+   - 右上角头像 → **My Profile** → **API Tokens** → **Create Token**
+   - 使用 **Edit Cloudflare Workers** 模板创建 Token 并复制。
+
+2. **获取 Account ID**：
+   - 在 Cloudflare 控制台右侧边栏找到 **Account ID** 并复制。
+
+3. **在 GitHub 仓库添加 Secrets**：
+   - 进入你的 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
+   - 点击 **New repository secret** 添加以下两个变量：
+     - CLOUDFLARE_API_TOKEN: 填入刚才创建的 API Token
+     - CLOUDFLARE_ACCOUNT_ID: 填入你的 Account ID
+
+设置完成后，以后每次你在本地提交代码或直接修改 GitHub 仓库代码，GitHub Actions 就会自动将项目部署到你的 Cloudflare Workers，无需在本地安装 Wrangler。
+
+---
+
 ## 🚀 部署指南
 
 ### 前置条件
