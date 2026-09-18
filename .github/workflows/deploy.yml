@@ -34,7 +34,6 @@ jobs:
         run: |
           KV_TITLE="card-tab-CARD_ORDER"
 
-          # 查询是否已有同名 KV Namespace
           echo "🔍 Checking for existing KV namespace: ${KV_TITLE}"
           EXISTING=$(curl -s -X GET \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/storage/kv/namespaces?per_page=100" \
@@ -64,16 +63,9 @@ jobs:
 
           echo "kv_id=${KV_ID}" >> $GITHUB_OUTPUT
 
-      # ── Step 2: 动态生成 wrangler.toml ──
-      - name: Generate wrangler.toml
-        run: |
-          KV_ID="${{ steps.kv.outputs.kv_id }}"
-          sed -i "s/PLACEHOLDER/${KV_ID}/g" wrangler.toml
-          echo "📝 wrangler.toml updated with KV ID: ${KV_ID}"
-          cat wrangler.toml
-
-      # ── Step 3: 自动配置 Secrets (JWT_SECRET / ADMIN_USERNAME / ADMIN_PASSWORD) ──
-      - name: Configure Worker Secrets
+      # ── Step 2: 准备明文变量并配置 wrangler.toml ──
+      - name: Prepare Plain Text Variables & Update wrangler.toml
+        id: vars
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -83,136 +75,73 @@ jobs:
         run: |
           WORKER_NAME="card-tab"
 
-          # 获取当前已有的 secrets 列表
-          echo "🔍 Fetching existing worker secrets..."
-          EXISTING_SECRETS=$(curl -s -X GET \
-            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/secrets" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/json" 2>/dev/null || echo '{"result":[]}')
+          # 1. 替换 KV_ID
+          KV_ID="${{ steps.kv.outputs.kv_id }}"
+          sed -i "s/PLACEHOLDER/${KV_ID}/g" wrangler.toml
 
-          # 提取已有 secret 名称列表
-          SECRET_NAMES=$(echo "$EXISTING_SECRETS" | jq -r '.result[]?.name // empty' 2>/dev/null || echo "")
-
-          has_secret() {
-            echo "$SECRET_NAMES" | grep -q "^$1$"
-          }
-
-          put_secret() {
-            local name=$1
-            local value=$2
-            echo "  📤 Setting ${name}..."
-            RESULT=$(curl -s -X PUT \
-              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/secrets" \
-              -H "Authorization: Bearer ${CF_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "{\"name\":\"${name}\",\"text\":\"${value}\",\"type\":\"secret_text\"}")
-            SUCCESS=$(echo "$RESULT" | jq -r '.success // false')
-            if [ "$SUCCESS" = "true" ]; then
-              echo "  ✅ ${name} configured"
-            else
-              echo "  ⚠️ ${name} may need post-deploy setup (worker not yet deployed)"
-              echo "$RESULT" | jq -r '.errors[]?.message // empty' 2>/dev/null
-            fi
-          }
-
-          # --- JWT_SECRET ---
-          if [ -n "$INPUT_JWT_SECRET" ]; then
-            JWT_VALUE="$INPUT_JWT_SECRET"
-            echo "🔑 JWT_SECRET: using value from GitHub Secrets"
-          elif has_secret "JWT_SECRET"; then
-            JWT_VALUE=""
-            echo "🔑 JWT_SECRET: already exists in Worker, skipping"
-          else
-            JWT_VALUE=$(openssl rand -base64 48 | tr -d '\n/+=')
-            JWT_VALUE="${JWT_VALUE:0:64}"
-            echo "🔑 JWT_SECRET: auto-generated (64 chars)"
-          fi
-
-          # --- ADMIN_USERNAME ---
+          # 2. 提取变量（优先使用用户在 GitHub Secrets 填的值，无则自动生成）
+          # ADMIN_USERNAME
           if [ -n "$INPUT_ADMIN_USERNAME" ]; then
-            USERNAME_VALUE="$INPUT_ADMIN_USERNAME"
-            echo "👤 ADMIN_USERNAME: using value from GitHub Secrets"
-          elif has_secret "ADMIN_USERNAME"; then
-            USERNAME_VALUE=""
-            echo "👤 ADMIN_USERNAME: already exists in Worker, skipping"
+            USERNAME_VAL="$INPUT_ADMIN_USERNAME"
           else
-            USERNAME_VALUE="admin"
-            echo "👤 ADMIN_USERNAME: using default 'admin'"
+            USERNAME_VAL="admin"
           fi
 
-          # --- ADMIN_PASSWORD ---
+          # ADMIN_PASSWORD (8 位)
           if [ -n "$INPUT_ADMIN_PASSWORD" ]; then
-            PASSWORD_VALUE="$INPUT_ADMIN_PASSWORD"
-            echo "🔒 ADMIN_PASSWORD: using value from GitHub Secrets"
-          elif has_secret "ADMIN_PASSWORD"; then
-            PASSWORD_VALUE=""
-            echo "🔒 ADMIN_PASSWORD: already exists in Worker, skipping"
+            PASSWORD_VAL="$INPUT_ADMIN_PASSWORD"
           else
-            PASSWORD_VALUE=$(openssl rand -base64 12 | tr -d '\n/+=')
-            PASSWORD_VALUE="${PASSWORD_VALUE:0:8}"
-            echo "🔒 ADMIN_PASSWORD: auto-generated (8 chars)"
+            PASSWORD_VAL=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
+            if [ ${#PASSWORD_VAL} -lt 8 ]; then
+              PASSWORD_VAL="admin123"
+            fi
           fi
 
-          # 保存生成的凭据到环境变量（用于部署摘要显示）
-          echo "JWT_DISPLAY=${JWT_VALUE:+[已设置]}" >> $GITHUB_ENV
-          echo "USERNAME_DISPLAY=${USERNAME_VALUE:-[已存在]}" >> $GITHUB_ENV
-          echo "PASSWORD_DISPLAY=${PASSWORD_VALUE:+[已设置]}" >> $GITHUB_ENV
+          # JWT_SECRET (64 位)
+          if [ -n "$INPUT_JWT_SECRET" ]; then
+            JWT_VAL="$INPUT_JWT_SECRET"
+          else
+            JWT_VAL=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
+          fi
 
-          # 所有 secret 值将在 deploy 之后写入（worker 必须先存在）
-          echo "jwt_value=${JWT_VALUE}" >> $GITHUB_OUTPUT
-          echo "username_value=${USERNAME_VALUE}" >> $GITHUB_OUTPUT
-          echo "password_value=${PASSWORD_VALUE}" >> $GITHUB_OUTPUT
-        id: secrets
+          # 3. 将变量追加写入 wrangler.toml 的 [vars] 中 (以明文变量形式部署)
+          cat << EOF >> wrangler.toml
 
-      # ── Step 4: 部署 Worker ──
+ADMIN_USERNAME = "${USERNAME_VAL}"
+ADMIN_PASSWORD = "${PASSWORD_VAL}"
+JWT_SECRET = "${JWT_VAL}"
+EOF
+
+          echo "📝 Updated wrangler.toml with plain text variables:"
+          cat wrangler.toml
+
+          # 4. 清理 Cloudflare 上历史遗留的加密 secrets (暗文“值已加密”，避免遮挡明文变量)
+          delete_secret() {
+            local sec_name=$1
+            curl -s -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/secrets/${sec_name}" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" >/dev/null 2>&1 || true
+          }
+
+          echo "🧹 Cleaning up legacy encrypted secret_text bindings if any..."
+          delete_secret "ADMIN_USERNAME"
+          delete_secret "ADMIN_PASSWORD"
+          delete_secret "JWT_SECRET"
+
+          # 输出到 GITHUB_OUTPUT 供摘要显示
+          echo "username=${USERNAME_VAL}" >> $GITHUB_OUTPUT
+          echo "password=${PASSWORD_VAL}" >> $GITHUB_OUTPUT
+          echo "jwt_secret=${JWT_VAL}" >> $GITHUB_OUTPUT
+
+      # ── Step 3: 部署 Worker (包含明文变量) ──
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # ── Step 5: 部署后写入 Secrets ──
-      - name: Set Worker Secrets (post-deploy)
-        env:
-          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          JWT_VALUE: ${{ steps.secrets.outputs.jwt_value }}
-          USERNAME_VALUE: ${{ steps.secrets.outputs.username_value }}
-          PASSWORD_VALUE: ${{ steps.secrets.outputs.password_value }}
-        run: |
-          WORKER_NAME="card-tab"
-
-          put_secret() {
-            local name=$1
-            local value=$2
-            if [ -z "$value" ]; then
-              echo "⏭️  ${name}: skipped (already exists or empty)"
-              return
-            fi
-            echo "📤 Setting ${name}..."
-            RESULT=$(curl -s -X PUT \
-              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/secrets" \
-              -H "Authorization: Bearer ${CF_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "{\"name\":\"${name}\",\"text\":\"${value}\",\"type\":\"secret_text\"}")
-            SUCCESS=$(echo "$RESULT" | jq -r '.success // false')
-            if [ "$SUCCESS" = "true" ]; then
-              echo "✅ ${name} configured successfully"
-            else
-              echo "❌ Failed to set ${name}"
-              echo "$RESULT" | jq .
-              exit 1
-            fi
-          }
-
-          put_secret "JWT_SECRET" "$JWT_VALUE"
-          put_secret "ADMIN_USERNAME" "$USERNAME_VALUE"
-          put_secret "ADMIN_PASSWORD" "$PASSWORD_VALUE"
-
-          echo ""
-          echo "🎉 All secrets configured!"
-
-      # ── Step 6: 部署摘要 ──
+      # ── Step 4: 部署摘要 ──
       - name: Deployment Summary
         run: |
           echo ""
@@ -220,14 +149,14 @@ jobs:
           echo "║          🚀 Card Tab 部署成功！                   ║"
           echo "╠══════════════════════════════════════════════════╣"
           echo "║                                                  ║"
-          echo "║  📌 Worker:  card-tab                            ║"
-          echo "║  📦 KV ID:   ${{ steps.kv.outputs.kv_id }}       ║"
+          echo "║  📌 Worker:          card-tab                    ║"
+          echo "║  📦 KV ID:           ${{ steps.kv.outputs.kv_id }}
           echo "║                                                  ║"
-          echo "║  🔑 JWT_SECRET:      ${JWT_DISPLAY}              ║"
-          echo "║  👤 ADMIN_USERNAME:  ${USERNAME_DISPLAY}          ║"
-          echo "║  🔒 ADMIN_PASSWORD:  ${PASSWORD_DISPLAY}          ║"
+          echo "║  👤 ADMIN_USERNAME:  ${{ steps.vars.outputs.username }}
+          echo "║  🔒 ADMIN_PASSWORD:  ${{ steps.vars.outputs.password }}
+          echo "║  🔑 JWT_SECRET:      ${{ steps.vars.outputs.jwt_secret }}
           echo "║                                                  ║"
-          echo "║  💡 在 Cloudflare Dashboard 查看/修改变量:         ║"
+          echo "║  💡 在 Cloudflare Dashboard 查看/修改明文变量:    ║"
           echo "║     Workers > card-tab > Settings > Variables     ║"
           echo "║                                                  ║"
           echo "╚══════════════════════════════════════════════════╝"
