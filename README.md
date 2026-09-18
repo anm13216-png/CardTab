@@ -101,7 +101,7 @@
 | `CLOUDFLARE_API_TOKEN` | ✅ | 上一步创建的 API Token |
 | `CLOUDFLARE_ACCOUNT_ID` | ✅ | Cloudflare Account ID |
 | `ADMIN_USERNAME` | ❌ | 管理员用户名，不设则默认 `admin` |
-| `ADMIN_PASSWORD` | ❌ | 管理员密码，不设则自动生成 16 位随机密码 |
+| `ADMIN_PASSWORD` | ❌ | 管理员密码，不设则自动生成 8 位随机密码 |
 | `JWT_SECRET` | ❌ | JWT 签名密钥，不设则自动生成 64 位随机串 |
 
 > 只需设置前两项即可完成部署，其余均自动处理。
@@ -162,7 +162,7 @@ npm run dev
 |--------|------|------|------|--------|
 | `JWT_SECRET` | Secret | ✅ | JWT 签名密钥，≥ 32 字符 | CI 自动生成 64 位随机串 |
 | `ADMIN_USERNAME` | Secret | ✅ | 管理员用户名 | `admin` |
-| `ADMIN_PASSWORD` | Secret | ✅ | 管理员登录密码，≥ 8 字符 | CI 自动生成 16 位随机密码 |
+| `ADMIN_PASSWORD` | Secret | ✅ | 管理员登录密码，≥ 8 字符 | CI 自动生成 8 位随机密码 |
 | `CARD_ORDER` | KV Binding | ✅ | KV 命名空间绑定 | CI 自动创建 |
 | `DEFAULT_USER` | Variable | ❌ | 默认用户标识 | `admin` |
 | `ICON_API` | Variable | ❌ | 网站图标 API 地址 | `https://api.xinac.net/icon/?url=` |
