@@ -437,57 +437,118 @@ const HTML_CONTENT = `
         
     </main>
 
-    <!-- 模态框：添加/编辑链接 -->
+    <!-- \u6a21\u6001\u6846\uff1a\u6dfb\u52a0/\u7f16\u8f91\u94fe\u63a5 -->
     <div id="dialog-overlay" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 overlay-hidden">
-        <div id="dialog-box" class="bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all duration-300 border border-slate-100 dark:border-slate-700 dialog-scale-hidden">
-            <h3 class="text-xl font-bold mb-5 text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <span class="w-1 h-6 bg-emerald-500 rounded-full"></span>
-                编辑信息
+        <div id="dialog-box" class="bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-lg p-6 transform transition-all duration-300 border border-slate-100 dark:border-slate-700 dialog-scale-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <h3 class="text-xl font-bold mb-5 text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                    <span class="w-1 h-6 bg-emerald-500 rounded-full"></span>
+                    <span id="dialog-title-text">\u7f16\u8f91\u4fe1\u606f</span>
+                </span>
+                <button type="button" id="dialog-close-x" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">&times;</button>
             </h3>
             <div class="space-y-4">
+                <!-- \u5730\u5740 (URL) -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">名称 <span class="text-red-500">*</span></label>
-                    <input type="text" id="name-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="网站名称">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">\u5730\u5740 <span class="text-red-500">*</span></label>
+                        <button type="button" id="btn-fetch-icon" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                            \u26a1 \u83b7\u53d6\u56fe\u6807
+                        </button>
+                    </div>
+                    <input type="text" id="url-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="https://example.com">
                 </div>
+
+                <!-- \u6807\u9898 (Name) -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">地址 <span class="text-red-500">*</span></label>
-                    <input type="text" id="url-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="https://...">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">\u6807\u9898 <span class="text-red-500">*</span></label>
+                        <div class="flex items-center gap-3">
+                            <span id="name-counter" class="text-xs text-slate-400">0 / 40</span>
+                            <button type="button" id="btn-fetch-title" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                                \ud83d\udd0d \u83b7\u53d6\u6807\u9898
+                            </button>
+                        </div>
+                    </div>
+                    <input type="text" id="name-input" maxlength="40" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="\u7f51\u7ad9\u540d\u79f0">
                 </div>
+
+                <!-- \u56fe\u6807 (Icon) Section -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">描述</label>
-                    <input type="text" id="tips-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="简短的描述...">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">图标 URL</label>
-                    <input type="text" id="icon-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="留空自动获取">
-                </div>
-                
-                                <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">内网地址</label>
-                    <input type="text" id="lanurl-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="内网 IP 或地址（可选）">
-                </div>
-                <!-- Custom Category Dropdown -->
-                <div class="relative z-20" id="category-select-wrapper">
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">分类</label>
-                    <input type="hidden" id="category-select-value">
-                    <button id="category-select-btn" class="w-full px-4 py-2.5 text-left rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all text-slate-700 dark:text-white flex items-center justify-between">
-                        <span id="category-select-text">请选择分类</span>
-                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                    <!-- Dropdown List -->
-                    <div id="category-select-menu" class="hidden absolute top-full left-0 mt-2 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 custom-scrollbar">
-                        <!-- Items populated by JS -->
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">\u56fe\u6807</label>
+                        <a href="https://icon-sets.iconify.design/" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+                            Iconify \u56fe\u6807\u5e93 \u2197
+                        </a>
+                    </div>
+                    <!-- 3 \u79cd\u56fe\u6807\u6a21\u5f0f\u5355\u9009 -->
+                    <div class="grid grid-cols-3 gap-1 mb-3 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400">
+                        <label class="flex items-center justify-center py-1.5 rounded-lg cursor-pointer transition-all has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 dark:has-[:checked]:text-emerald-400 has-[:checked]:shadow-sm">
+                            <input type="radio" name="icon-mode" value="online" checked class="hidden"> <span>\u5728\u7ebf / Iconify</span>
+                        </label>
+                        <label class="flex items-center justify-center py-1.5 rounded-lg cursor-pointer transition-all has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 dark:has-[:checked]:text-emerald-400 has-[:checked]:shadow-sm">
+                            <input type="radio" name="icon-mode" value="text" class="hidden"> <span>\u7eaf\u6587\u5b57</span>
+                        </label>
+                        <label class="flex items-center justify-center py-1.5 rounded-lg cursor-pointer transition-all has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 dark:has-[:checked]:text-emerald-400 has-[:checked]:shadow-sm">
+                            <input type="radio" name="icon-mode" value="upload" class="hidden"> <span>\u4e0a\u4f20\u56fe\u7247</span>
+                        </label>
+                    </div>
+                    <!-- \u5bf9\u5e94\u6a21\u5f0f\u7684\u8f93\u5165\u533a\u57df & \u9884\u89c8 -->
+                    <div class="flex items-center gap-3">
+                        <div id="icon-mode-online" class="flex-1">
+                            <input type="text" id="icon-input" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs dark:text-white" placeholder="\u5982 devicon:google \u6216 \u56fe\u7247URL\uff08\u7559\u7a7a\u81ea\u52a8\uff09">
+                        </div>
+                        <div id="icon-mode-text" class="flex-1 hidden">
+                            <input type="text" id="icon-text-input" maxlength="6" class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 outline-none text-xs dark:text-white" placeholder="\u8f93\u5165\u6587\u5b57\u6216 Emoji">
+                        </div>
+                        <div id="icon-mode-upload" class="flex-1 hidden">
+                            <label class="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600 hover:border-emerald-500 cursor-pointer text-xs text-slate-500 dark:text-slate-400 transition-colors">
+                                <span>\ud83d\udcc1 \u9009\u62e9\u672c\u5730\u56fe\u7247</span>
+                                <input type="file" id="icon-file-input" accept="image/*" class="hidden">
+                            </label>
+                        </div>
+                        <div id="icon-preview-box" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <span class="text-xs text-slate-400">\u9884\u89c8</span>
+                        </div>
                     </div>
                 </div>
 
+                <!-- \u5185\u7f51\u5730\u5740 (lanUrl) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">\u5185\u7f51\u5730\u5740</label>
+                    <input type="text" id="lanurl-input" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="\u5185\u7f51 IP \u6216\u5730\u5740\uff08\u53ef\u9009\uff09">
+                </div>
+
+                <!-- \u63cf\u8ff0\u4fe1\u606f (Tips) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">\u63cf\u8ff0\u4fe1\u606f</label>
+                        <span id="tips-counter" class="text-xs text-slate-400">0 / 100</span>
+                    </div>
+                    <input type="text" id="tips-input" maxlength="100" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all dark:text-white" placeholder="\u7b80\u77ed\u7684\u63cf\u8ff0\u4fe1\u606f...">
+                </div>
+
+                <!-- Custom Category Dropdown -->
+                <div class="relative z-20" id="category-select-wrapper">
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">\u5206\u7c7b <span class="text-red-500">*</span></label>
+                    <input type="hidden" id="category-select-value">
+                    <button id="category-select-btn" type="button" class="w-full px-4 py-2.5 text-left rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all text-slate-700 dark:text-white flex items-center justify-between">
+                        <span id="category-select-text">\u8bf7\u9009\u62e9\u5206\u7c7b</span>
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="category-select-menu" class="hidden absolute top-full left-0 mt-2 w-full max-h-48 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 custom-scrollbar">
+                    </div>
+                </div>
+
+                <!-- \u79c1\u5bc6\u94fe\u63a5 -->
                 <div class="flex items-center gap-2 pt-2">
-                    <input type="checkbox" id="private-checkbox" class="w-5 h-5 text-emerald-500 rounded focus:ring-emerald-500 border-gray-300 bg-gray-100">
-                    <label for="private-checkbox" class="text-sm text-slate-600 dark:text-slate-300 font-medium">设为私密链接 (仅登录可见)</label>
+                    <input type="checkbox" id="private-checkbox" class="w-5 h-5 text-emerald-500 rounded focus:ring-emerald-500 border-gray-300 bg-gray-100 cursor-pointer">
+                    <label for="private-checkbox" class="text-sm text-slate-600 dark:text-slate-300 font-medium cursor-pointer">\u8bbe\u4e3a\u79c1\u5bc6\u94fe\u63a5 (\u4ec5\u767b\u5f55\u53ef\u89c1)</label>
                 </div>
             </div>
-            <div class="flex justify-end gap-3 mt-8">
-                <button id="dialog-cancel-btn" class="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">取消</button>
-                <button id="dialog-confirm-btn" class="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25 transition-all hover:translate-y-[-1px]">确定</button>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" id="dialog-cancel-btn" class="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">\u53d6\u6d88</button>
+                <button type="button" id="dialog-confirm-btn" class="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25 transition-all hover:translate-y-[-1px]">\u786e\u5b9a</button>
             </div>
         </div>
     </div>
@@ -1661,33 +1722,49 @@ const HTML_CONTENT = `
         icon.className = iconClass;
 
         let resolvedSrc;
-        if (link.icon && link.icon.startsWith('http')) {
+        let iconNode;
+        let isTextIcon = false;
+
+        if (link.icon && link.icon.startsWith('text:')) {
+            isTextIcon = true;
+            const textVal = link.icon.replace(/^text:/, '').trim() || (link.name ? link.name.charAt(0) : '字');
+            iconNode = document.createElement('div');
+            const txtSize = isAppLayout ? 'text-2xl font-bold' : 'text-sm font-bold';
+            iconNode.className = 'relative w-full h-full rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center select-none ' + txtSize;
+            iconNode.textContent = textVal;
+            spinner.remove();
+        } else if (link.icon && (link.icon.startsWith('http') || link.icon.startsWith('data:'))) {
             resolvedSrc = link.icon;
+        } else if (link.icon && link.icon.includes(':')) {
+            const parts = link.icon.split(':');
+            resolvedSrc = 'https://api.iconify.design/' + parts[0] + '/' + parts[1] + '.svg';
         } else if (iconCache.has(link.url)) {
             resolvedSrc = iconCache.get(link.url);
         } else {
             resolvedSrc = imgApi + encodeURIComponent(link.url);
             iconCache.set(link.url, resolvedSrc);
         }
-        let iconNode = icon;
-        if (iconFailed.has(resolvedSrc)) {
-            iconNode = createIconFallback(icon);
-        } else {
-            icon.src = resolvedSrc;
-            icon.onload = function() {
-                // 图标加载完成后淡入并隐藏 spinner
-                this.classList.add('opacity-100');
-                this.classList.remove('opacity-0');
-                spinner.remove();
-            };
-            icon.onerror = function() {
-                iconFailed.add(resolvedSrc);
-                this.onerror = null; // 防止替换后再出错进入死循环
-                this.replaceWith(createIconFallback(this));
-                spinner.remove();
-            };
+
+        if (!isTextIcon) {
+            if (iconFailed.has(resolvedSrc)) {
+                iconNode = createIconFallback(icon);
+            } else {
+                icon.src = resolvedSrc;
+                icon.onload = function() {
+                    this.classList.add('opacity-100');
+                    this.classList.remove('opacity-0');
+                    spinner.remove();
+                };
+                icon.onerror = function() {
+                    iconFailed.add(resolvedSrc);
+                    this.onerror = null;
+                    this.replaceWith(createIconFallback(this));
+                    spinner.remove();
+                };
+                iconNode = icon;
+            }
         }
-        if (iconNode === icon) iconWrap.appendChild(spinner);
+        if (!isTextIcon && iconNode === icon) iconWrap.appendChild(spinner);
         iconWrap.appendChild(iconNode);
         
         const title = document.createElement('div');
@@ -1901,8 +1978,10 @@ const HTML_CONTENT = `
             if (!btn || btn.classList.contains('ctx-disabled')) return;
             e.stopPropagation();
             const action = btn.dataset.ctx;
-            const url = ctxTargetCard ? ctxTargetCard.getAttribute('data-url') : '';
-            const lanUrl = ctxTargetCard ? (ctxTargetCard.getAttribute('data-lanurl') || '') : '';
+            const targetLink = ctxTargetLink;
+            const targetCard = ctxTargetCard;
+            const url = targetCard ? targetCard.getAttribute('data-url') : '';
+            const lanUrl = targetCard ? (targetCard.getAttribute('data-lanurl') || '') : '';
 
             hideContextMenu();
 
@@ -1921,11 +2000,11 @@ const HTML_CONTENT = `
                     try { await navigator.clipboard.writeText(lanUrl); } catch {}
                 }
             } else if (action === 'edit') {
-                if (ctxTargetLink) showEditDialog(ctxTargetLink);
+                if (targetLink) showEditDialog(targetLink);
             } else if (action === 'delete') {
-                if (ctxTargetCard && ctxTargetLink) {
-                    if (await customConfirm('确定要删除「' + ctxTargetLink.name + '」吗？')) {
-                        await removeCard(ctxTargetCard);
+                if (targetCard && targetLink) {
+                    if (await customConfirm('确定要删除「' + targetLink.name + '」吗？')) {
+                        await removeCard(targetCard);
                     }
                 }
             }
@@ -2021,7 +2100,7 @@ const HTML_CONTENT = `
         const newLink = {
             name, url, category,
             tips: document.getElementById('tips-input').value.trim(),
-            icon: document.getElementById('icon-input').value.trim(),
+            icon: getIconValue(),
             isPrivate: document.getElementById('private-checkbox').checked,
             lanUrl: document.getElementById('lanurl-input').value.trim()
         };
@@ -2048,9 +2127,10 @@ const HTML_CONTENT = `
             name: document.getElementById('name-input').value.trim(),
             url: document.getElementById('url-input').value.trim(),
             tips: document.getElementById('tips-input').value.trim(),
-            icon: document.getElementById('icon-input').value.trim(),
+            icon: getIconValue(),
             category: document.getElementById('category-select-value').value,
-            isPrivate: document.getElementById('private-checkbox').checked
+            isPrivate: document.getElementById('private-checkbox').checked,
+            lanUrl: document.getElementById('lanurl-input').value.trim()
         };
 
         let found = false;
@@ -2521,16 +2601,214 @@ const HTML_CONTENT = `
         }
     }
     
+    // ====== 图标模式 / 预览 / 计数器 辅助函数 ======
+    let _uploadedIconDataUrl = '';
+
+    function updateCounters() {
+        const nameEl = document.getElementById('name-input');
+        const nameCnt = document.getElementById('name-counter');
+        if (nameEl && nameCnt) nameCnt.textContent = nameEl.value.length + ' / 40';
+        const tipsEl = document.getElementById('tips-input');
+        const tipsCnt = document.getElementById('tips-counter');
+        if (tipsEl && tipsCnt) tipsCnt.textContent = tipsEl.value.length + ' / 100';
+    }
+
+    function switchIconMode(mode) {
+        const online = document.getElementById('icon-mode-online');
+        const text = document.getElementById('icon-mode-text');
+        const upload = document.getElementById('icon-mode-upload');
+        if (online) online.classList.toggle('hidden', mode !== 'online');
+        if (text) text.classList.toggle('hidden', mode !== 'text');
+        if (upload) upload.classList.toggle('hidden', mode !== 'upload');
+        updateIconPreview();
+    }
+
+    function getIconValue() {
+        const checked = document.querySelector('input[name="icon-mode"]:checked');
+        const mode = checked ? checked.value : 'online';
+        if (mode === 'text') {
+            const txt = document.getElementById('icon-text-input').value.trim();
+            return txt ? ('text:' + txt) : '';
+        } else if (mode === 'upload') {
+            return _uploadedIconDataUrl || '';
+        } else {
+            return document.getElementById('icon-input').value.trim();
+        }
+    }
+
+    function setIconValue(iconStr) {
+        _uploadedIconDataUrl = '';
+        const onlineRadio = document.querySelector('input[name="icon-mode"][value="online"]');
+        const textRadio = document.querySelector('input[name="icon-mode"][value="text"]');
+        const uploadRadio = document.querySelector('input[name="icon-mode"][value="upload"]');
+        const iconInput = document.getElementById('icon-input');
+        const textInput = document.getElementById('icon-text-input');
+
+        if (!iconStr) {
+            if (onlineRadio) onlineRadio.checked = true;
+            if (iconInput) iconInput.value = '';
+            if (textInput) textInput.value = '';
+            switchIconMode('online');
+            return;
+        }
+        if (iconStr.startsWith('text:')) {
+            if (textRadio) textRadio.checked = true;
+            if (textInput) textInput.value = iconStr.replace(/^text:/, '');
+            if (iconInput) iconInput.value = '';
+            switchIconMode('text');
+        } else if (iconStr.startsWith('data:image/')) {
+            _uploadedIconDataUrl = iconStr;
+            if (uploadRadio) uploadRadio.checked = true;
+            if (iconInput) iconInput.value = '';
+            if (textInput) textInput.value = '';
+            switchIconMode('upload');
+        } else {
+            if (onlineRadio) onlineRadio.checked = true;
+            if (iconInput) iconInput.value = iconStr;
+            if (textInput) textInput.value = '';
+            switchIconMode('online');
+        }
+    }
+
+    function updateIconPreview() {
+        const previewBox = document.getElementById('icon-preview-box');
+        if (!previewBox) return;
+        const iconVal = getIconValue();
+        const urlVal = (document.getElementById('url-input') || {}).value || '';
+        previewBox.innerHTML = '';
+
+        if (iconVal && iconVal.startsWith('text:')) {
+            const txt = iconVal.replace(/^text:/, '') || '字';
+            const span = document.createElement('span');
+            span.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
+            span.textContent = txt;
+            previewBox.appendChild(span);
+        } else if (iconVal && (iconVal.startsWith('http') || iconVal.startsWith('data:'))) {
+            const img = document.createElement('img');
+            img.src = iconVal;
+            img.className = 'w-full h-full object-contain p-1 rounded-lg';
+            img.onerror = function() { previewBox.innerHTML = '<span class="text-xs text-red-400">失败</span>'; };
+            previewBox.appendChild(img);
+        } else if (iconVal && iconVal.includes(':')) {
+            const parts = iconVal.split(':');
+            const src = 'https://api.iconify.design/' + parts[0] + '/' + parts[1] + '.svg';
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'w-full h-full object-contain p-1 rounded-lg';
+            img.onerror = function() { previewBox.innerHTML = '<span class="text-xs text-red-400">失败</span>'; };
+            previewBox.appendChild(img);
+        } else if (urlVal.trim()) {
+            const src = imgApi + encodeURIComponent(urlVal.trim());
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'w-full h-full object-contain p-1 rounded-lg';
+            img.onerror = function() { previewBox.innerHTML = '<span class="text-xs text-slate-400">无</span>'; };
+            previewBox.appendChild(img);
+        } else {
+            previewBox.innerHTML = '<span class="text-xs text-slate-400">预览</span>';
+        }
+    }
+
+    // 初始化弹窗事件绑定（只调用一次）
+    let _dialogEventsInit = false;
+    function initDialogEvents() {
+        if (_dialogEventsInit) return;
+        _dialogEventsInit = true;
+
+        // 字数计数器
+        const nameInput = document.getElementById('name-input');
+        const tipsInput = document.getElementById('tips-input');
+        if (nameInput) nameInput.addEventListener('input', updateCounters);
+        if (tipsInput) tipsInput.addEventListener('input', updateCounters);
+
+        // 图标模式切换
+        document.querySelectorAll('input[name="icon-mode"]').forEach(radio => {
+            radio.addEventListener('change', () => switchIconMode(radio.value));
+        });
+
+        // 图标输入实时预览
+        const iconInput = document.getElementById('icon-input');
+        if (iconInput) iconInput.addEventListener('input', updateIconPreview);
+        const iconTextInput = document.getElementById('icon-text-input');
+        if (iconTextInput) iconTextInput.addEventListener('input', updateIconPreview);
+
+        // 上传图片
+        const fileInput = document.getElementById('icon-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 512 * 1024) {
+                    customAlert('图片大小不能超过 512KB');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    _uploadedIconDataUrl = evt.target.result;
+                    updateIconPreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 获取图标 按钮
+        const btnFetchIcon = document.getElementById('btn-fetch-icon');
+        if (btnFetchIcon) {
+            btnFetchIcon.addEventListener('click', () => {
+                const u = (document.getElementById('url-input') || {}).value || '';
+                if (!u.trim()) return;
+                try {
+                    const parsed = new URL(u.trim().startsWith('http') ? u.trim() : 'http://' + u.trim());
+                    const iconUrl = 'https://api.iowen.cn/api/favicon/' + parsed.hostname + '.png';
+                    const onlineRadio = document.querySelector('input[name="icon-mode"][value="online"]');
+                    if (onlineRadio) onlineRadio.checked = true;
+                    switchIconMode('online');
+                    const iconInput2 = document.getElementById('icon-input');
+                    if (iconInput2) iconInput2.value = iconUrl;
+                    updateIconPreview();
+                } catch (e) {}
+            });
+        }
+
+        // 获取标题 按钮
+        const btnFetchTitle = document.getElementById('btn-fetch-title');
+        if (btnFetchTitle) {
+            btnFetchTitle.addEventListener('click', () => {
+                const u = (document.getElementById('url-input') || {}).value || '';
+                if (!u.trim()) return;
+                try {
+                    const parsed = new URL(u.trim().startsWith('http') ? u.trim() : 'http://' + u.trim());
+                    let hostname = parsed.hostname.replace(/^www\./, '');
+                    // 首字母大写
+                    hostname = hostname.charAt(0).toUpperCase() + hostname.slice(1);
+                    const nameInput2 = document.getElementById('name-input');
+                    if (nameInput2) nameInput2.value = hostname;
+                    updateCounters();
+                } catch (e) {}
+            });
+        }
+
+        // 关闭 X 按钮
+        const closeX = document.getElementById('dialog-close-x');
+        if (closeX) closeX.addEventListener('click', hideAddDialog);
+    }
+
     function showAddDialog() {
+        initDialogEvents();
         toggleOverlay('dialog-overlay', true);
+        const titleText = document.getElementById('dialog-title-text');
+        if (titleText) titleText.textContent = '添加卡片';
         document.getElementById('name-input').value = '';
         document.getElementById('url-input').value = '';
         document.getElementById('tips-input').value = '';
-        document.getElementById('icon-input').value = '';
+        document.getElementById('lanurl-input').value = '';
         document.getElementById('private-checkbox').checked = false;
         
         document.getElementById('category-select-value').value = '';
         document.getElementById('category-select-text').textContent = '请选择分类';
+        
+        setIconValue('');
+        updateCounters();
         
         const btn = document.getElementById('dialog-confirm-btn');
         const newBtn = btn.cloneNode(true);
@@ -2541,13 +2819,15 @@ const HTML_CONTENT = `
     }
     
     function showEditDialog(link) {
+        initDialogEvents();
         toggleOverlay('dialog-overlay', true);
-        document.getElementById('name-input').value = link.name;
-        document.getElementById('url-input').value = link.url;
+        const titleText = document.getElementById('dialog-title-text');
+        if (titleText) titleText.textContent = '编辑信息';
+        document.getElementById('name-input').value = link.name || '';
+        document.getElementById('url-input').value = link.url || '';
         document.getElementById('tips-input').value = link.tips || '';
-        document.getElementById('icon-input').value = link.icon || '';
-        document.getElementById('private-checkbox').checked = link.isPrivate;
         document.getElementById('lanurl-input').value = link.lanUrl || '';
+        document.getElementById('private-checkbox').checked = !!link.isPrivate;
         
         const linkCategory = link.category || (() => {
             for (const c in categories) if (categories[c].links.some(l => l.url === link.url)) return c;
@@ -2555,6 +2835,9 @@ const HTML_CONTENT = `
         })();
         document.getElementById('category-select-value').value = linkCategory;
         document.getElementById('category-select-text').textContent = linkCategory || '请选择分类';
+        
+        setIconValue(link.icon || '');
+        updateCounters();
         
         const btn = document.getElementById('dialog-confirm-btn');
         const newBtn = btn.cloneNode(true);
