@@ -1,3 +1,7 @@
+﻿# Card Tab - 个人导航书签页
+[MIT](LICENSE)
+
+[MIT](LICENSE)
 # Card Tab - 个人导航书签页
 
 <p align="center">
@@ -134,6 +138,55 @@
 前往 **Cloudflare Dashboard** → **Workers & Pages** → **card-tab** → **Settings** → **Variables and Secrets**，即可查看自动生成的管理员用户名、密码和 JWT 密钥。
 
 > ⚠️ **重要提示**：后续重新部署 **不会覆盖** 已有的密钥和密码，你的数据和凭据始终安全。
+
+
+### ❗ 常见部署问题
+
+#### 错误：`You need to register a workers.dev subdomain`
+
+如果部署时 GitHub Actions 日志出现以下错误：
+
+```
+⚠ You need to register a workers.dev subdomain before publishing to workers.dev
+✘ You can either deploy your worker to one or more routes by specifying them in wrangler.toml,
+  or register a workers.dev subdomain here:
+  https://dash.cloudflare.com/***/workers/onboarding
+```
+
+这是因为你的 Cloudflare 账号 **尚未开通 workers.dev 子域名**。有两种解决方法：
+
+**方法一：注册 workers.dev 子域名（推荐，30 秒搞定）**
+
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 进入 **Workers & Pages**
+3. 点击页面上方的 **设置子域名** 提示（或在概览页右侧找到 `workers.dev` 子域名设置）
+4. 选择一个你喜欢的子域名（如 `myname`），确认注册
+5. 回到 GitHub Actions，点击 **Re-run all jobs** 重新运行
+
+注册完成后，你的网站地址将是：`https://card-tab.你的子域名.workers.dev`
+
+**方法二：绑定自定义域名**
+
+如果你有自己的域名（已添加到 Cloudflare），可以跳过 workers.dev，直接绑定自定义域名：
+
+1. 确保你的域名已添加到 Cloudflare 并完成 DNS 托管
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages**
+3. 找到 `card-tab` Worker（如果是首次部署失败，需要先用方法一完成一次部署，或在本地用 `npx wrangler deploy` 部署一次）
+4. 点击 **card-tab** → **Settings** → **Domains & Routes**
+5. 点击 **Add** → **Custom domain**
+6. 输入你想绑定的域名（如 `nav.example.com`）
+7. Cloudflare 会自动添加 DNS 记录，点击确认即可
+
+或者，你也可以直接在 `wrangler.toml` 中配置路由（需要取消注释并修改）：
+
+```toml
+# 在 wrangler.toml 末尾添加自定义域名路由（可选）
+# routes = [
+#   { pattern = "nav.example.com", custom_domain = true }
+# ]
+```
+
+> 💡 **提示**：绑定自定义域名后，即使没有注册 workers.dev 子域名也可以正常使用。
 
 ---
 
