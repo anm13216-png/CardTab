@@ -1,0 +1,13 @@
+name = "card-tab"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+kv_namespaces = [
+  { binding = "CARD_ORDER", id = "替换为你的KV命名空间ID" }
+]
+
+[vars]
+DEFAULT_USER = "admin"
+ICON_API = "https://api.xinac.net/icon/?url="
+PREFER_ICON_API = "true"
+# ALLOWED_ORIGINS = "https://your-domain.com"
