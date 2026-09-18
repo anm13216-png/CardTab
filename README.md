@@ -15,6 +15,7 @@
 ---
 
 ## 📢 最新更新 (v2.0.1)
+- 🔑 **登录比对与 Payload 修复**：修复了登录弹窗只传输密码引起的服务端 Username 校验比对失败 Bug，支持单密码验证框直接登录。
 - 🐛 **组件响应与下拉菜单修复**：彻底修复从单文件拆分至独立 `index.html` 时因 JavaScript 正则表达式转义引起的语法报错，恢复「本站」下拉菜单、「👤 设置」菜单与分类点击交互。
 - 🌟 **开箱即用默认书签 (Seed Data)**：新增初次部署时的内置基础导航书签与美化 Empty State 引导，解决全新部署时主屏空白、无数据引导的问题。
 
@@ -134,6 +135,19 @@ Cloudflare 账号未初始化或开启 `*.workers.dev` 免费二级域名子域�
 7. 绑定完成后，直接在浏览器访问你的自定义域名（如 `https://nav.yourdomain.com`）即可正常打开 Card Tab。
 
 ---
+
+---
+
+## 🔒 如何设置永久固定的登录密码？
+
+默认情况下，若未配置 GitHub Secret，**每次 GitHub Actions 触发部署时都会随机重新生成一个 8 位随机密码**（可在 Cloudflare 仪表盘 **card-tab -> 设置 -> 变量** 中随时以明文形式查看）。
+
+如果您希望**固定自己的专属密码**，只需：
+1. 进入 GitHub 仓库 -> **Settings** -> **Secrets and variables** -> **Actions**
+2. 点击 **New repository secret** 按钮：
+   - `ADMIN_PASSWORD`: 输入您想设置的固定密码（如 `MyPassword123`）
+   - `ADMIN_USERNAME`: （可选）输入您想设置的固定账号（默认 `admin`）
+3. 以后无论触发多少次部署，登录密码都将**永远固定不变**。
 
 ## ⚙️ 环境变量说明
 
