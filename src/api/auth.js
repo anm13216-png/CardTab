@@ -88,7 +88,8 @@ export async function handleLogin(request, env) {
 
         // 同时校验用户名和密码（恒定时间比较），统一返回"用户名或密码错误"
         const expectedUsername = env.ADMIN_USERNAME || 'admin';
-        const usernameOk = typeof username === 'string' && (await timingSafeStringEqual(username, expectedUsername));
+        const userVal = typeof username === 'string' && username ? username : expectedUsername;
+        const usernameOk = await timingSafeStringEqual(userVal, expectedUsername);
         const passwordOk = typeof password === 'string' && (await timingSafeStringEqual(password, env.ADMIN_PASSWORD));
         const loginOk = usernameOk && passwordOk;
 
