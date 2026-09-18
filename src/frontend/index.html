@@ -559,8 +559,11 @@
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
             </div>
             <h3 class="text-xl font-bold mb-2 text-slate-800 dark:text-white">身份验证</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">请输入管理员密码以继续操作</p>
-            <input type="password" id="password-input" placeholder="访问密码" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none mb-6 dark:text-white text-center tracking-widest text-lg transition-all">
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">请输入管理员账号和密码以继续操作</p>
+            <div class="space-y-3 mb-6">
+                <input type="text" id="username-input" placeholder="管理员账号" autocomplete="username" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none dark:text-white text-center text-base transition-all">
+                <input type="password" id="password-input" placeholder="访问密码" autocomplete="current-password" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none dark:text-white text-center tracking-widest text-lg transition-all">
+            </div>
             <div class="flex gap-3">
                 <button id="password-cancel-btn" class="flex-1 py-2.5 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">取消</button>
                 <button id="password-confirm-btn" class="flex-1 py-2.5 rounded-xl text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25 font-medium transition-colors">确认登录</button>
@@ -2590,9 +2593,15 @@
     
     async function toggleLogin() {
         if (!isLoggedIn) {
+             const userEl = document.getElementById('username-input');
+             if (userEl && !userEl.value) userEl.value = 'admin';
              document.getElementById('password-input').value = '';
              toggleOverlay('password-dialog-overlay', true);
-             document.getElementById('password-input').focus();
+             if (userEl && !userEl.value) {
+                 userEl.focus();
+             } else {
+                 document.getElementById('password-input').focus();
+             }
         } else {
              if (await customConfirm('确定退出登录吗？')) {
                  logout();
@@ -2851,13 +2860,14 @@
     }
 
     document.getElementById('password-confirm-btn').onclick = async () => {
+         const username = document.getElementById('username-input')?.value?.trim() || 'admin';
          const pwd = document.getElementById('password-input').value;
          if(!pwd) return;
          try {
              const res = await fetch('/api/login', {
                  method: 'POST',
                  headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({username: 'admin', password: pwd})
+                 body: JSON.stringify({username, password: pwd})
              });
              const data = await res.json();
              if(data.valid) {
@@ -2926,6 +2936,12 @@
         return res;
     };
     
+    const triggerLoginConfirm = () => {
+        document.getElementById('password-confirm-btn').click();
+    };
+    document.getElementById('username-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') triggerLoginConfirm(); });
+    document.getElementById('password-input')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') triggerLoginConfirm(); });
+
     document.getElementById('password-cancel-btn').onclick = () => {
          toggleOverlay('password-dialog-overlay', false);
     };
