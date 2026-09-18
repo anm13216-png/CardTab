@@ -830,9 +830,10 @@
 
     function renderSearchEngineMenu() {
         const container = document.getElementById('search-engine-list');
+        if (!container) return;
         const title = container.querySelector('div');
         container.innerHTML = '';
-        container.appendChild(title);
+        if (title) container.appendChild(title);
 
         engineList.forEach(key => {
             const label = searchEngineLabels[key];
@@ -857,23 +858,36 @@
         const label = searchEngineLabels[value] || "本站";
         const icon = searchEngineIcons[value] || searchEngineIcons['site'];
         
-        document.getElementById('current-engine-label').textContent = label;
-        document.getElementById('current-engine-icon').innerHTML = icon;
+        const labelEl = document.getElementById('current-engine-label');
+        if (labelEl) labelEl.textContent = label;
+        const iconEl = document.getElementById('current-engine-icon');
+        if (iconEl) iconEl.innerHTML = icon;
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    async function initApp() {
         const loadingMask = document.getElementById('loading-mask');
         if (loadingMask) loadingMask.classList.remove('hidden');
-        initializeUIComponents();
-        renderSearchEngineMenu();
-        await checkLoginStatusAndLoad();
-        if (loadingMask) loadingMask.classList.add('hidden');
+        try {
+            initializeUIComponents();
+            renderSearchEngineMenu();
+            await checkLoginStatusAndLoad();
+        } catch (e) {
+            console.error('App init error:', e);
+        } finally {
+            if (loadingMask) loadingMask.classList.add('hidden');
+        }
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible' && isLoggedIn) {
                 await validateToken();
             }
         });
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
 
     async function checkLoginStatusAndLoad() {
         const isValid = await validateToken();
@@ -900,24 +914,28 @@
             backToTopBtn: document.getElementById('back-to-top-btn')
         };
         
-        elements.themeSwitchCheckbox.checked = document.documentElement.classList.contains('dark');
-        elements.themeSwitchCheckbox.addEventListener('change', (e) => {
-            const isDark = e.target.checked;
-            window.isDarkTheme = isDark;
-            applyTheme(isDark);
-            
-            const savePrefCheckbox = document.getElementById('save-preference-checkbox');
-            if (savePrefCheckbox && savePrefCheckbox.checked) {
-                localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            }
-        });
+        if (elements.themeSwitchCheckbox) {
+            elements.themeSwitchCheckbox.checked = document.documentElement.classList.contains('dark');
+            elements.themeSwitchCheckbox.addEventListener('change', (e) => {
+                const isDark = e.target.checked;
+                window.isDarkTheme = isDark;
+                applyTheme(isDark);
+                
+                const savePrefCheckbox = document.getElementById('save-preference-checkbox');
+                if (savePrefCheckbox && savePrefCheckbox.checked) {
+                    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                }
+            });
+        }
 
-        if(elements.layoutSwitchCheckbox) {
+        if (elements.layoutSwitchCheckbox) {
             elements.layoutSwitchCheckbox.checked = isAppLayout;
         }
         
         const savedPref = localStorage.getItem('savePreferences') === 'true';
-        elements.savePrefCheckbox.checked = savedPref;
+        if (elements.savePrefCheckbox) {
+            elements.savePrefCheckbox.checked = savedPref;
+        }
 
         currentEngine = (savedPref && localStorage.getItem('searchEngine')) || 'site';
         updateSearchEngineUI(currentEngine);
@@ -926,65 +944,77 @@
         const searchBtn = document.getElementById('search-engine-btn');
         const searchMenu = document.getElementById('search-engine-menu');
         
-        searchBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            searchMenu.classList.toggle('hidden');
-        });
+        if (searchBtn && searchMenu) {
+            searchBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                searchMenu.classList.toggle('hidden');
+            });
+        }
 
         const catWrapper = document.getElementById('category-select-wrapper');
         const catBtn = document.getElementById('category-select-btn');
         const catMenu = document.getElementById('category-select-menu');
         
-        catBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            catMenu.classList.toggle('hidden');
-        });
+        if (catBtn && catMenu) {
+            catBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                catMenu.classList.toggle('hidden');
+            });
+        }
 
         const toggleDropdown = () => {
-            elements.dropdown.classList.toggle('hidden');
+            if (elements.dropdown) elements.dropdown.classList.toggle('hidden');
         };
 
-        elements.menuToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleDropdown();
-        });
+        if (elements.menuToggleBtn && elements.dropdown) {
+            elements.menuToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleDropdown();
+            });
+        }
 
         document.addEventListener('click', (e) => {
-            if (!elements.dropdownWrapper.contains(e.target)) {
+            if (elements.dropdownWrapper && elements.dropdown && !elements.dropdownWrapper.contains(e.target)) {
                  elements.dropdown.classList.add('hidden');
             }
-            if (!searchWrapper.contains(e.target)) {
+            if (searchWrapper && searchMenu && !searchWrapper.contains(e.target)) {
                 searchMenu.classList.add('hidden');
             }
-            if (!catWrapper.contains(e.target)) {
+            if (catWrapper && catMenu && !catWrapper.contains(e.target)) {
                 catMenu.classList.add('hidden');
             }
         });
 
-        elements.dropdown.addEventListener('click', (e) => { e.stopPropagation(); });
+        if (elements.dropdown) {
+            elements.dropdown.addEventListener('click', (e) => { e.stopPropagation(); });
+        }
 
-        elements.savePrefCheckbox.addEventListener('change', () => {
-            const enabled = elements.savePrefCheckbox.checked;
-            localStorage.setItem('savePreferences', enabled);
-            if (!enabled) {
-                localStorage.removeItem('searchEngine');
-                localStorage.removeItem('theme');
-            } else {
-                localStorage.setItem('searchEngine', currentEngine);
-                localStorage.setItem('theme', window.isDarkTheme ? 'dark' : 'light');
-            }
-        });
-
-        elements.searchButton.addEventListener('click', async () => {
-            const query = elements.searchInput.value.trim();
-            if (query) {
-                if (currentEngine === 'site') {
-                    await searchLinks(query); 
+        if (elements.savePrefCheckbox) {
+            elements.savePrefCheckbox.addEventListener('change', () => {
+                const enabled = elements.savePrefCheckbox.checked;
+                localStorage.setItem('savePreferences', enabled);
+                if (!enabled) {
+                    localStorage.removeItem('searchEngine');
+                    localStorage.removeItem('theme');
                 } else {
-                    window.open(searchEngines[currentEngine] + encodeURIComponent(query), '_blank');
+                    localStorage.setItem('searchEngine', currentEngine);
+                    localStorage.setItem('theme', window.isDarkTheme ? 'dark' : 'light');
                 }
-            }
-        });
+            });
+        }
+
+        if (elements.searchButton && elements.searchInput) {
+            elements.searchButton.addEventListener('click', async () => {
+                const query = elements.searchInput.value.trim();
+                if (query) {
+                    if (currentEngine === 'site') {
+                        await searchLinks(query); 
+                    } else {
+                        window.open(searchEngines[currentEngine] + encodeURIComponent(query), '_blank');
+                    }
+                }
+            });
+        }
 
         if (elements.clearSearchButton) {
             elements.clearSearchButton.addEventListener('click', () => {
