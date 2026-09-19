@@ -1,6 +1,6 @@
 {
   "name": "card-tab",
-  "version": "1.0.2",
+  "version": "1.0.2.10",
   "description": "Card Tab - 个人导航书签页 (Cloudflare Workers)",
   "main": "worker.js",
   "scripts": {
