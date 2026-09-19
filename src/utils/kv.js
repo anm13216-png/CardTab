@@ -44,7 +44,7 @@ export function normalizeCategories(categories) {
 
 export async function getUsersKv(env) {
     const superAdminUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : 'admin';
-    const superAdminPassword = env.ADMIN_PASSWORD || 'admin123';
+    const superAdminPassword = env.ADMIN_PASSWORD || '';
 
     let users = [];
     let usersJson = null;
@@ -63,15 +63,10 @@ export async function getUsersKv(env) {
 
     let superAdminIdx = users.findIndex(u => u.role === 'super_admin' || u.username === superAdminUsername);
 
-    let needSave = false;
-
     if (superAdminIdx !== -1) {
-        if (users[superAdminIdx].username !== superAdminUsername || users[superAdminIdx].password !== superAdminPassword || users[superAdminIdx].role !== 'super_admin') {
-            users[superAdminIdx].username = superAdminUsername;
-            users[superAdminIdx].password = superAdminPassword;
-            users[superAdminIdx].role = 'super_admin';
-            needSave = true;
-        }
+        users[superAdminIdx].username = superAdminUsername;
+        users[superAdminIdx].password = superAdminPassword;
+        users[superAdminIdx].role = 'super_admin';
     } else {
         users.unshift({
             username: superAdminUsername,
@@ -81,16 +76,15 @@ export async function getUsersKv(env) {
             owner: null,
             createdAt: Date.now()
         });
-        needSave = true;
     }
 
-    if (needSave) {
-        try {
-            await env.CARD_ORDER.put('sys_users', JSON.stringify(users));
-        } catch (e) {
-            console.error('KV sync sys_users failed:', e);
+    // Always ensure super_admin's password in the return array is strictly dynamic from env.ADMIN_PASSWORD
+    users = users.map(u => {
+        if (u.role === 'super_admin' || u.username === superAdminUsername) {
+            return { ...u, username: superAdminUsername, password: superAdminPassword };
         }
-    }
+        return u;
+    });
 
     return users;
 }

@@ -70,50 +70,48 @@ export async function handleLogin(request, env) {
     const LOCK_MS = 900 * 1000;
     try {
         const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
-        const rateLimitKey = `${RATE_LIMIT_PREFIX}login_${clientIP}`;
-        const kv = await env.CARD_ORDER.getWithMetadata(rateLimitKey, { type: 'text' });
-        const attempts = parseInt(kv.value) || 0;
-        const expiredAt = (kv.metadata && kv.metadata.expiredAt) || 0;
+        const rateLimitKey = RATE_LIMIT_PREFIX + 'login_' + clientIP;
+        let attempts = 0;
+        let expiredAt = 0;
+
+        try {
+            const kv = await env.CARD_ORDER.getWithMetadata(rateLimitKey, { type: 'text' });
+            if (kv) {
+                attempts = parseInt(kv.value) || 0;
+                expiredAt = (kv.metadata && kv.metadata.expiredAt) || 0;
+            }
+        } catch (e) {}
 
         if (attempts >= MAX_ATTEMPTS) {
             const waitSec = Math.max(1, Math.ceil((expiredAt - Date.now()) / 1000));
             return jsonResponse({ valid: false, locked: true, remaining: 0, retryAfter: waitSec }, 429, request, env);
         }
 
-                const body = await request.json();
-        let username = typeof body.username === 'string' ? body.username.trim() : '';
-        const password = typeof body.password === 'string' ? body.password : '';
+        const body = await request.json();
+        let inputUsername = typeof body.username === 'string' ? body.username.trim() : '';
+        const inputPassword = typeof body.password === 'string' ? body.password : '';
 
         const envUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : 'admin';
         const envPassword = env.ADMIN_PASSWORD || '';
 
         const users = await getUsersKv(env);
-
         let matchedUser = null;
 
-        // 1. Direct check against env variables for Super Admin if username matches or is default
-        const isEnvUserMatch = (username === '' || username === envUsername);
-        const isEnvPassMatch = (envPassword && password === envPassword);
-
-        if (isEnvUserMatch && isEnvPassMatch && envPassword) {
-            matchedUser = users.find(u => u.role === 'super_admin' || u.username === envUsername);
-            if (!matchedUser) {
-                matchedUser = {
-                    username: envUsername,
-                    password: envPassword,
-                    nickname: '超级管理员',
-                    role: 'super_admin',
-                    owner: null
-                };
-            }
+        // 1. Direct match for Super Admin using environment variables (env.ADMIN_USERNAME & env.ADMIN_PASSWORD)
+        if ((inputUsername === '' || inputUsername === envUsername) && envPassword && inputPassword === envPassword) {
+            matchedUser = {
+                username: envUsername,
+                password: envPassword,
+                nickname: '超级管理员',
+                role: 'super_admin',
+                owner: null
+            };
         }
 
-        // 2. Fallback check against stored users
+        // 2. Match for other users created in KV
         if (!matchedUser) {
             for (const u of users) {
-                const uMatch = (username === u.username);
-                const pMatch = (password === u.password);
-                if (uMatch && pMatch) {
+                if (u.role !== 'super_admin' && u.username === inputUsername && u.password === inputPassword) {
                     matchedUser = u;
                     break;
                 }
@@ -123,7 +121,9 @@ export async function handleLogin(request, env) {
         if (!matchedUser) {
             const newAttempts = attempts + 1;
             const newExpiredAt = Date.now() + LOCK_MS;
-            await env.CARD_ORDER.put(rateLimitKey, String(newAttempts), { expirationTtl: 900, metadata: { expiredAt: newExpiredAt } });
+            try {
+                await env.CARD_ORDER.put(rateLimitKey, String(newAttempts), { expirationTtl: 900, metadata: { expiredAt: newExpiredAt } });
+            } catch (e) {}
             const remaining = Math.max(0, MAX_ATTEMPTS - newAttempts);
             if (newAttempts >= MAX_ATTEMPTS) {
                 return jsonResponse({ valid: false, locked: true, remaining: 0, retryAfter: Math.max(1, Math.ceil((newExpiredAt - Date.now()) / 1000)) }, 429, request, env);
@@ -131,7 +131,9 @@ export async function handleLogin(request, env) {
             return jsonResponse({ valid: false, remaining }, 403, request, env);
         }
 
-        await env.CARD_ORDER.delete(rateLimitKey);
+        try {
+            await env.CARD_ORDER.delete(rateLimitKey);
+        } catch (e) {}
 
         const currentTime = Math.floor(Date.now() / 1000);
         const kid = await currentKeyGen(env);
@@ -164,15 +166,15 @@ export async function handleLogin(request, env) {
 
         const response = jsonResponse({
             valid: true,
-            token: `Bearer ${accessToken}`,
+            token: 'Bearer ' + accessToken,
             user: {
                 username: matchedUser.username,
-                nickname: matchedUser.nickname,
+                nickname: matchedUser.nickname || matchedUser.username,
                 role: matchedUser.role,
                 owner: dataOwner
             }
         }, 200, request, env);
-        response.headers.append('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000`);
+        response.headers.append('Set-Cookie', 'refreshToken=' + refreshToken + '; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000');
 
         return response;
     } catch (e) {
@@ -230,7 +232,7 @@ export async function handleRefreshToken(request, env) {
         const newRefreshToken = await createJWT(newRefreshTokenPayload, env.JWT_SECRET);
 
         const response = jsonResponse({
-            accessToken: `Bearer ${newAccessToken}`,
+            accessToken: 'Bearer ' + newAccessToken,
             user: {
                 username: payload.username,
                 nickname: payload.nickname,
@@ -238,7 +240,7 @@ export async function handleRefreshToken(request, env) {
                 owner: payload.owner
             }
         }, 200, request, env);
-        response.headers.append('Set-Cookie', `refreshToken=${newRefreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000`);
+        response.headers.append('Set-Cookie', 'refreshToken=' + newRefreshToken + '; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000');
 
         return response;
     } catch (e) {
