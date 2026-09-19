@@ -81,10 +81,17 @@ export async function handleLogin(request, env) {
         }
 
         const body = await request.json();
-        const username = typeof body.username === 'string' ? body.username.trim() : '';
+        let username = typeof body.username === 'string' ? body.username.trim() : '';
         const password = typeof body.password === 'string' ? body.password : '';
 
         const users = await getUsersKv(env);
+        
+        // If username is empty or matches superAdmin default, and only 1 super_admin exists, allow matching super_admin by password or username
+        if (!username) {
+            const superAdmin = users.find(u => u.role === 'super_admin');
+            if (superAdmin) username = superAdmin.username;
+        }
+
         let matchedUser = null;
 
         for (const u of users) {
