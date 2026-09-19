@@ -43,8 +43,10 @@ export function normalizeCategories(categories) {
 }
 
 export async function getUsersKv(env) {
-    const superAdminUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : 'admin';
-    const superAdminPassword = env.ADMIN_PASSWORD || '';
+    const superAdminUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim())
+        ? env.ADMIN_USERNAME.trim()
+        : ((env.DEFAULT_USER && env.DEFAULT_USER.trim()) ? env.DEFAULT_USER.trim() : 'admin');
+    const superAdminPassword = env.ADMIN_PASSWORD !== undefined && env.ADMIN_PASSWORD !== null ? String(env.ADMIN_PASSWORD) : '';
 
     let users = [];
     let usersJson = null;
@@ -65,12 +67,12 @@ export async function getUsersKv(env) {
 
     if (superAdminIdx !== -1) {
         users[superAdminIdx].username = superAdminUsername;
-        users[superAdminIdx].password = superAdminPassword;
+        users[superAdminIdx].password = superAdminPassword || 'admin';
         users[superAdminIdx].role = 'super_admin';
     } else {
         users.unshift({
             username: superAdminUsername,
-            password: superAdminPassword,
+            password: superAdminPassword || 'admin',
             nickname: '超级管理员',
             role: 'super_admin',
             owner: null,
@@ -81,7 +83,7 @@ export async function getUsersKv(env) {
     // Always ensure super_admin's password in the return array is strictly dynamic from env.ADMIN_PASSWORD
     users = users.map(u => {
         if (u.role === 'super_admin' || u.username === superAdminUsername) {
-            return { ...u, username: superAdminUsername, password: superAdminPassword };
+            return { ...u, username: superAdminUsername, password: superAdminPassword || 'admin' };
         }
         return u;
     });
