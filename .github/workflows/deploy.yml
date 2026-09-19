@@ -90,7 +90,7 @@ jobs:
 
           echo "" >> wrangler.toml
           echo "ADMIN_USERNAME = \"${USERNAME_VAL}\"" >> wrangler.toml
-          echo "DEFAULT_USER = \"${USERNAME_VAL}\"" >> wrangler.toml
+          sed -i "s/DEFAULT_USER = .*/DEFAULT_USER = \"${USERNAME_VAL}\"/g" wrangler.toml
           echo "ADMIN_PASSWORD = \"${PASSWORD_VAL}\"" >> wrangler.toml
           echo "JWT_SECRET = \"${JWT_VAL}\"" >> wrangler.toml
 
