@@ -66,26 +66,37 @@ jobs:
           WORKER_NAME="card-tab"
           KV_ID="${{ steps.kv.outputs.kv_id }}"
           sed -i "s/PLACEHOLDER/${KV_ID}/g" wrangler.toml
-                    if [ -n "$INPUT_ADMIN_USERNAME" ]; then
-            echo "ADMIN_USERNAME = \"$INPUT_ADMIN_USERNAME\"" >> wrangler.toml
-            echo "Using ADMIN_USERNAME from GitHub Secrets"
+
+          if [ -n "$INPUT_ADMIN_USERNAME" ]; then
+            USERNAME_VAL="$INPUT_ADMIN_USERNAME"
           else
-            echo "ADMIN_USERNAME GitHub Secret not set, preserving Cloudflare Dashboard setting."
+            USERNAME_VAL="admin"
           fi
 
           if [ -n "$INPUT_ADMIN_PASSWORD" ]; then
-            echo "ADMIN_PASSWORD = \"$INPUT_ADMIN_PASSWORD\"" >> wrangler.toml
-            echo "Using ADMIN_PASSWORD from GitHub Secrets"
+            PASSWORD_VAL="$INPUT_ADMIN_PASSWORD"
           else
-            echo "ADMIN_PASSWORD GitHub Secret not set, preserving Cloudflare Dashboard setting."
+            PASSWORD_VAL=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 8)
+            if [ ${#PASSWORD_VAL} -lt 8 ]; then
+              PASSWORD_VAL="admin123"
+            fi
           fi
 
           if [ -n "$INPUT_JWT_SECRET" ]; then
-            echo "JWT_SECRET = \"$INPUT_JWT_SECRET\"" >> wrangler.toml
-            echo "Using JWT_SECRET from GitHub Secrets"
+            JWT_VAL="$INPUT_JWT_SECRET"
           else
-            echo "JWT_SECRET GitHub Secret not set, preserving Cloudflare Dashboard setting."
+            JWT_VAL=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
           fi
+
+          echo "" >> wrangler.toml
+          echo "ADMIN_USERNAME = \"${USERNAME_VAL}\"" >> wrangler.toml
+          echo "DEFAULT_USER = \"${USERNAME_VAL}\"" >> wrangler.toml
+          echo "ADMIN_PASSWORD = \"${PASSWORD_VAL}\"" >> wrangler.toml
+          echo "JWT_SECRET = \"${JWT_VAL}\"" >> wrangler.toml
+
+          echo "username=${USERNAME_VAL}" >> $GITHUB_OUTPUT
+          echo "password=${PASSWORD_VAL}" >> $GITHUB_OUTPUT
+          echo "jwt_secret=${JWT_VAL}" >> $GITHUB_OUTPUT
 
           echo "Updated wrangler.toml:"
           cat wrangler.toml
@@ -100,9 +111,13 @@ jobs:
         run: |
           echo ""
           echo "=========================================="
-          echo "  Card Tab Deploy Success!"
+          echo " 🎉 Card Tab 部署成功！ Deploy Success!"
           echo "=========================================="
-          echo "  Worker:          card-tab"
-          echo "  KV ID:           ${{ steps.kv.outputs.kv_id }}"
-          echo "  Note:            ADMIN_USERNAME & ADMIN_PASSWORD read directly from Cloudflare Dashboard / Secrets"
+          echo " Worker 名称:     card-tab"
+          echo " KV Namespace:    ${{ steps.kv.outputs.kv_id }}"
+          echo " ------------------------------------------"
+          echo " 🔑 超级管理员账号: ${{ steps.vars.outputs.username }}"
+          echo " 🔑 超级管理员密码: ${{ steps.vars.outputs.password }}"
           echo "=========================================="
+          echo "提示：密码已自动写入 Cloudflare 控制台环境变量中（ADMIN_PASSWORD）。"
+          echo "如果您想固定使用自己的密码，可以在 GitHub Secrets 里添加 ADMIN_PASSWORD 设置，或在 Cloudflare 控制台修改该变量。"

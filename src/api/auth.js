@@ -94,14 +94,14 @@ export async function handleLogin(request, env) {
         let inputUsername = typeof body.username === 'string' ? body.username.trim() : '';
         const inputPassword = typeof body.password === 'string' ? body.password : '';
 
-        const envUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : 'admin';
+        const envUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : ((env.DEFAULT_USER && env.DEFAULT_USER.trim()) ? env.DEFAULT_USER.trim() : 'admin');
         const envPassword = env.ADMIN_PASSWORD || '';
 
         const users = await getUsersKv(env);
         let matchedUser = null;
 
         // 1. Direct match for Super Admin using environment variables (env.ADMIN_USERNAME & env.ADMIN_PASSWORD)
-        const isSuperAdminUser = (inputUsername === '' || inputUsername === envUsername);
+        const isSuperAdminUser = (inputUsername === '' || inputUsername.toLowerCase() === envUsername.toLowerCase());
         const isSuperAdminPasswordOk = envPassword ? (inputPassword === envPassword) : (inputPassword === 'admin');
 
         if (isSuperAdminUser && isSuperAdminPasswordOk) {
