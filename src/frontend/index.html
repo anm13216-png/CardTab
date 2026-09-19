@@ -394,6 +394,17 @@
                                         </label>
                                     </div>
                                     <div class="h-px bg-slate-100 dark:bg-slate-700/50 mx-1 my-1"></div>
+                                    <!-- 账号管理 (登录后显示) -->
+                                    <div id="user-mgmt-menu" class="hidden border-t border-slate-100 dark:border-slate-700/50 my-1 pt-1">
+                                        <button onclick="openUserMgmtModal()" class="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700/50 hover:text-blue-600 transition-colors flex items-center gap-3 font-medium">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                            账号管理
+                                        </button>
+                                        <button id="save-default-view-btn" onclick="saveAsDefaultView()" class="hidden w-full text-left px-3 py-2 rounded-lg text-sm text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-700/50 hover:text-emerald-600 transition-colors flex items-center gap-3 font-medium">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                                            发布为未登录默认界面
+                                        </button>
+                                    </div>
                                     <button id="login-Btn" onclick="toggleLogin()" class="w-full text-left px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors flex items-center gap-3 font-medium">
                                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                                         登录 / 退出
@@ -567,6 +578,125 @@
             <div class="flex gap-3">
                 <button id="password-cancel-btn" class="flex-1 py-2.5 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 font-medium transition-colors">取消</button>
                 <button id="password-confirm-btn" class="flex-1 py-2.5 rounded-xl text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25 font-medium transition-colors">确认登录</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- 账号管理弹窗 (系统应用) -->
+    <div id="user-mgmt-overlay" class="fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 overlay-hidden">
+        <div id="user-mgmt-box" class="bg-white dark:bg-[#1e293b] rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden transform transition-all duration-300 dialog-scale-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 dark:text-white text-lg">系统应用</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">管理系统的用户账号与权限分配</p>
+                    </div>
+                </div>
+                <button onclick="toggleOverlay('user-mgmt-overlay', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Body Grid -->
+            <div class="flex flex-1 overflow-hidden">
+                <!-- Sidebar -->
+                <div class="w-48 bg-slate-50/50 dark:bg-slate-800/30 p-3 border-r border-slate-100 dark:border-slate-700/60 space-y-1">
+                    <button class="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        账号管理
+                    </button>
+                </div>
+
+                <!-- Main Panel -->
+                <div class="flex-1 p-6 overflow-y-auto space-y-4">
+                    <!-- Info Alert -->
+                    <div class="p-3.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 rounded-xl text-xs text-blue-600 dark:text-blue-300 flex items-center gap-2.5">
+                        <svg class="w-4 h-4 shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>账号之间的数据不互通。普通用户共享其所属管理员的导航数据。</span>
+                    </div>
+
+                    <!-- Action Bar -->
+                    <div class="flex items-center justify-between">
+                        <button onclick="openAddUserModal()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            添加用户
+                        </button>
+                        <span id="user-count-tip" class="text-xs text-slate-400"></span>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="border border-slate-100 dark:border-slate-700/60 rounded-xl overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase border-b border-slate-100 dark:border-slate-700/60">
+                                <tr>
+                                    <th class="px-4 py-3">账号</th>
+                                    <th class="px-4 py-3">昵称</th>
+                                    <th class="px-4 py-3">角色</th>
+                                    <th class="px-4 py-3" id="th-owner">所属管理员</th>
+                                    <th class="px-4 py-3" id="th-pwd">密码</th>
+                                    <th class="px-4 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/40 text-slate-700 dark:text-slate-200">
+                                <!-- JS 动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加 / 编辑用户 弹窗 -->
+    <div id="edit-user-overlay" class="fixed inset-0 z-[75] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300 overlay-hidden">
+        <div id="edit-user-box" class="bg-white dark:bg-[#1e293b] rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 dark:border-slate-700 p-6 transform transition-all duration-300 dialog-scale-hidden space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700/60">
+                <h3 id="user-modal-title" class="font-bold text-slate-800 dark:text-white text-lg">添加用户</h3>
+                <button onclick="toggleOverlay('edit-user-overlay', false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 font-medium mb-1">账号 <span class="text-red-500">*</span></label>
+                    <input type="text" id="user-form-username" placeholder="请输入账号" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 font-medium mb-1">密码 <span id="user-pwd-req" class="text-red-500">*</span></label>
+                    <input type="text" id="user-form-password" placeholder="请输入密码" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-white">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-400 font-medium mb-1">昵称</label>
+                    <input type="text" id="user-form-nickname" placeholder="请输入昵称" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-white">
+                </div>
+
+                <div id="user-form-role-group">
+                    <label class="block text-slate-600 dark:text-slate-400 font-medium mb-1">角色 <span class="text-red-500">*</span></label>
+                    <select id="user-form-role" onchange="onRoleFormChange()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-white">
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+
+                <div id="user-form-owner-group">
+                    <label class="block text-slate-600 dark:text-slate-400 font-medium mb-1">所属管理员 <span class="text-red-500">*</span></label>
+                    <select id="user-form-owner" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-white">
+                        <!-- JS 动态填入管理员选项 -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="toggleOverlay('edit-user-overlay', false)" class="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 font-medium transition-colors">取消</button>
+                <button onclick="saveUserForm()" class="px-5 py-2 rounded-xl text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 font-medium transition-colors">保存</button>
             </div>
         </div>
     </div>
@@ -2594,7 +2724,7 @@
     async function toggleLogin() {
         if (!isLoggedIn) {
              const userEl = document.getElementById('username-input');
-             if (userEl && !userEl.value) userEl.value = 'admin';
+             if (userEl) userEl.value = '';
              document.getElementById('password-input').value = '';
              toggleOverlay('password-dialog-overlay', true);
              if (userEl && !userEl.value) {
@@ -2860,7 +2990,7 @@
     }
 
     document.getElementById('password-confirm-btn').onclick = async () => {
-         const username = document.getElementById('username-input')?.value?.trim() || 'admin';
+         const username = document.getElementById('username-input')?.value?.trim() || '';
          const pwd = document.getElementById('password-input').value;
          if(!pwd) return;
          try {
@@ -3374,3 +3504,223 @@
     </div>
     </body>
 </html>
+<script>
+
+    // ====== 账号管理 (User Management) 前端逻辑 ======
+    let currentUser = null;
+    let _allUsers = [];
+    let _isUserEditMode = false;
+
+    async function loadUserMgmtData() {
+        try {
+            const token = getAuthToken();
+            if (!token) return;
+            const res = await fetch('/api/users', {
+                headers: { 'Authorization': token }
+            });
+            const data = await res.json();
+            if (data.success && Array.isArray(data.users)) {
+                _allUsers = data.users;
+                renderUserTable(data.users, data.callerRole);
+            }
+        } catch (e) {
+            console.error('加载用户列表失败:', e);
+        }
+    }
+
+    function renderUserTable(users, callerRole) {
+        const tbody = document.getElementById('user-table-body');
+        const countTip = document.getElementById('user-count-tip');
+        if (countTip) countTip.textContent = `共 ${users.length} 位用户`;
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        users.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors';
+
+            let roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">普通</span>';
+            if (u.role === 'super_admin') {
+                roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300">超级管理员</span>';
+            } else if (u.role === 'admin') {
+                roleBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">管理员</span>';
+            }
+
+            const ownerText = u.owner ? u.owner : '-';
+            const pwdText = (callerRole === 'super_admin' && u.password) ? u.password : '******';
+            const isSelf = currentUser && currentUser.username === u.username;
+
+            tr.innerHTML = `
+                <td class="px-4 py-3.5 font-medium text-slate-800 dark:text-white">
+                    ${escapeHTML(u.username)} ${isSelf ? '<span class="text-xs text-emerald-500 font-normal">(当前账号)</span>' : ''}
+                </td>
+                <td class="px-4 py-3.5 text-slate-600 dark:text-slate-300">${escapeHTML(u.nickname || '-')}</td>
+                <td class="px-4 py-3.5">${roleBadge}</td>
+                <td class="px-4 py-3.5 text-slate-500 dark:text-slate-400">${escapeHTML(ownerText)}</td>
+                <td class="px-4 py-3.5 font-mono text-xs text-slate-500 dark:text-slate-400">${escapeHTML(pwdText)}</td>
+                <td class="px-4 py-3.5 text-right space-x-2">
+                    <button onclick="openEditUserModal('${escapeHTML(u.username)}')" class="px-2.5 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 rounded-lg transition-colors">编辑</button>
+                    ${u.role !== 'super_admin' ? `<button onclick="confirmDeleteUser('${escapeHTML(u.username)}')" class="px-2.5 py-1 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">删除</button>` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function openUserMgmtModal() {
+        toggleOverlay('user-mgmt-overlay', true);
+        loadUserMgmtData();
+    }
+
+    function openAddUserModal() {
+        _isUserEditMode = false;
+        document.getElementById('user-modal-title').textContent = '添加用户';
+        const userInp = document.getElementById('user-form-username');
+        userInp.value = '';
+        userInp.disabled = false;
+        document.getElementById('user-form-password').value = '';
+        document.getElementById('user-pwd-req').style.display = 'inline';
+        document.getElementById('user-form-nickname').value = '';
+
+        populateOwnerOptions();
+        onRoleFormChange();
+        toggleOverlay('edit-user-overlay', true);
+    }
+
+    function openEditUserModal(username) {
+        const u = _allUsers.find(x => x.username === username);
+        if (!u) return;
+
+        _isUserEditMode = true;
+        document.getElementById('user-modal-title').textContent = '编辑用户';
+        const userInp = document.getElementById('user-form-username');
+        userInp.value = u.username;
+        userInp.disabled = true;
+
+        document.getElementById('user-form-password').value = '';
+        document.getElementById('user-pwd-req').style.display = 'none';
+        document.getElementById('user-form-nickname').value = u.nickname || '';
+
+        const roleSel = document.getElementById('user-form-role');
+        if (roleSel) roleSel.value = u.role === 'admin' ? 'admin' : 'user';
+
+        populateOwnerOptions();
+        const ownerSel = document.getElementById('user-form-owner');
+        if (ownerSel && u.owner) ownerSel.value = u.owner;
+
+        onRoleFormChange();
+        toggleOverlay('edit-user-overlay', true);
+    }
+
+    function populateOwnerOptions() {
+        const ownerSel = document.getElementById('user-form-owner');
+        if (!ownerSel) return;
+        ownerSel.innerHTML = '';
+
+        const admins = _allUsers.filter(u => u.role === 'super_admin' || u.role === 'admin');
+        if (admins.length === 0 && currentUser) {
+            admins.push({ username: currentUser.username, nickname: currentUser.nickname });
+        }
+        admins.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.username;
+            opt.textContent = `${a.nickname || a.username} (${a.username})`;
+            ownerSel.appendChild(opt);
+        });
+    }
+
+    function onRoleFormChange() {
+        const roleVal = document.getElementById('user-form-role')?.value;
+        const ownerGrp = document.getElementById('user-form-owner-group');
+        if (!ownerGrp) return;
+        if (roleVal === 'user' && currentUser && currentUser.role === 'super_admin') {
+            ownerGrp.style.display = 'block';
+        } else {
+            ownerGrp.style.display = 'none';
+        }
+    }
+
+    async function saveUserForm() {
+        const username = document.getElementById('user-form-username').value.trim();
+        const password = document.getElementById('user-form-password').value.trim();
+        const nickname = document.getElementById('user-form-nickname').value.trim();
+        const role = document.getElementById('user-form-role').value;
+        const owner = document.getElementById('user-form-owner')?.value || (currentUser ? currentUser.username : 'admin');
+
+        if (!username) return customAlert('请输入有效账号');
+        if (!_isUserEditMode && !password) return customAlert('请输入有效密码');
+
+        const token = getAuthToken();
+        if (!token) return customAlert('请先登录');
+
+        try {
+            let res, data;
+            if (!_isUserEditMode) {
+                res = await fetch('/api/users/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ username, password, nickname, role, owner })
+                });
+            } else {
+                res = await fetch('/api/users/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ username, newPassword: password, nickname, role, owner })
+                });
+            }
+            data = await res.json();
+            if (res.ok && data.success) {
+                toggleOverlay('edit-user-overlay', false);
+                customAlert(_isUserEditMode ? '用户修改成功' : '用户创建成功');
+                loadUserMgmtData();
+            } else {
+                customAlert(data.message || data.error || '保存用户失败');
+            }
+        } catch (e) {
+            customAlert('操作失败: ' + e.message);
+        }
+    }
+
+    async function confirmDeleteUser(username) {
+        if (await customConfirm(`确定删除账号 "${username}" 吗？`)) {
+            const token = getAuthToken();
+            try {
+                const res = await fetch('/api/users/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                    body: JSON.stringify({ username })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    customAlert('删除成功');
+                    loadUserMgmtData();
+                } else {
+                    customAlert(data.message || '删除失败');
+                }
+            } catch (e) {
+                customAlert('删除失败: ' + e.message);
+            }
+        }
+    }
+
+    async function saveAsDefaultView() {
+        if (!await customConfirm('确定将当前的页面配置应用为未登录访问者的默认初始化界面吗？')) return;
+        const token = getAuthToken();
+        try {
+            const res = await fetch('/api/saveDefaultView', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token },
+                body: JSON.stringify({ categories: categoriesData })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                customAlert('默认初始化界面已更新');
+            } else {
+                customAlert(data.message || '更新失败');
+            }
+        } catch (e) {
+            customAlert('更新失败: ' + e.message);
+        }
+    }
+
+</script>

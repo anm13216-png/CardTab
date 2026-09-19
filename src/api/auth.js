@@ -1,8 +1,8 @@
 import { createJWT, validateJWT } from '../utils/jwt.js';
 import { timingSafeStringEqual } from '../utils/crypto.js';
 import { corsHeaders, jsonResponse } from '../utils/response.js';
+import { getUsersKv } from '../utils/kv.js';
 
-// ---------- Key Generation（Token 吊销） ----------
 let _genCache = { value: null, expireAt: 0 };
 
 export async function currentKeyGen(env) {
@@ -27,7 +27,6 @@ export async function bumpKeyGen(env) {
     }
 }
 
-// ---------- Cookie 解析 ----------
 export function parseCookie(cookieHeader) {
     const cookies = {};
     if (!cookieHeader) return cookies;
@@ -38,13 +37,11 @@ export function parseCookie(cookieHeader) {
     return cookies;
 }
 
-// ---------- Token 验证 ----------
 export async function validateServerToken(authHeader, env) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return { isValid: false, status: 401, response: { error: 'Unauthorized', message: '未登录' } };
     }
     const token = authHeader.slice(7);
-
     const payload = await validateJWT(token, env.JWT_SECRET);
 
     if (!payload) {
@@ -67,7 +64,6 @@ export async function validateServerToken(authHeader, env) {
     return { isValid: true, payload };
 }
 
-// ---------- 登录处理（用户名+密码） ----------
 export async function handleLogin(request, env) {
     const RATE_LIMIT_PREFIX = '__limit__';
     const MAX_ATTEMPTS = 5;
@@ -84,16 +80,23 @@ export async function handleLogin(request, env) {
             return jsonResponse({ valid: false, locked: true, remaining: 0, retryAfter: waitSec }, 429, request, env);
         }
 
-        const { username, password } = await request.json();
+        const body = await request.json();
+        const username = typeof body.username === 'string' ? body.username.trim() : '';
+        const password = typeof body.password === 'string' ? body.password : '';
 
-        // 同时校验用户名和密码（恒定时间比较），统一返回"用户名或密码错误"
-        const expectedUsername = env.ADMIN_USERNAME || 'admin';
-        const userVal = typeof username === 'string' && username ? username : expectedUsername;
-        const usernameOk = await timingSafeStringEqual(userVal, expectedUsername);
-        const passwordOk = typeof password === 'string' && (await timingSafeStringEqual(password, env.ADMIN_PASSWORD));
-        const loginOk = usernameOk && passwordOk;
+        const users = await getUsersKv(env);
+        let matchedUser = null;
 
-        if (!loginOk) {
+        for (const u of users) {
+            const uMatch = await timingSafeStringEqual(username, u.username);
+            const pMatch = await timingSafeStringEqual(password, u.password);
+            if (uMatch && pMatch) {
+                matchedUser = u;
+                break;
+            }
+        }
+
+        if (!matchedUser) {
             const newAttempts = attempts + 1;
             const newExpiredAt = Date.now() + LOCK_MS;
             await env.CARD_ORDER.put(rateLimitKey, String(newAttempts), { expirationTtl: 900, metadata: { expiredAt: newExpiredAt } });
@@ -103,15 +106,21 @@ export async function handleLogin(request, env) {
             }
             return jsonResponse({ valid: false, remaining }, 403, request, env);
         }
+
         await env.CARD_ORDER.delete(rateLimitKey);
 
         const currentTime = Math.floor(Date.now() / 1000);
         const kid = await currentKeyGen(env);
 
+        const dataOwner = matchedUser.role === 'user' ? (matchedUser.owner || matchedUser.username) : matchedUser.username;
+
         const accessTokenPayload = {
             iat: currentTime,
             exp: currentTime + 7200,
-            role: 'admin',
+            username: matchedUser.username,
+            nickname: matchedUser.nickname || matchedUser.username,
+            role: matchedUser.role,
+            owner: dataOwner,
             type: 'access',
             kid
         };
@@ -120,13 +129,25 @@ export async function handleLogin(request, env) {
         const refreshTokenPayload = {
             iat: currentTime,
             exp: currentTime + 2592000,
-            role: 'admin',
+            username: matchedUser.username,
+            nickname: matchedUser.nickname || matchedUser.username,
+            role: matchedUser.role,
+            owner: dataOwner,
             type: 'refresh',
             kid
         };
         const refreshToken = await createJWT(refreshTokenPayload, env.JWT_SECRET);
 
-        const response = jsonResponse({ valid: true, token: `Bearer ${accessToken}` }, 200, request, env);
+        const response = jsonResponse({
+            valid: true,
+            token: `Bearer ${accessToken}`,
+            user: {
+                username: matchedUser.username,
+                nickname: matchedUser.nickname,
+                role: matchedUser.role,
+                owner: dataOwner
+            }
+        }, 200, request, env);
         response.headers.append('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000`);
 
         return response;
@@ -135,7 +156,6 @@ export async function handleLogin(request, env) {
     }
 }
 
-// ---------- Token 刷新 ----------
 export async function handleRefreshToken(request, env) {
     try {
         const cookies = parseCookie(request.headers.get('Cookie'));
@@ -164,7 +184,10 @@ export async function handleRefreshToken(request, env) {
         const newAccessTokenPayload = {
             iat: currentTime,
             exp: currentTime + 7200,
-            role: 'admin',
+            username: payload.username,
+            nickname: payload.nickname,
+            role: payload.role,
+            owner: payload.owner,
             type: 'access',
             kid
         };
@@ -173,13 +196,24 @@ export async function handleRefreshToken(request, env) {
         const newRefreshTokenPayload = {
             iat: currentTime,
             exp: currentTime + 2592000,
-            role: 'admin',
+            username: payload.username,
+            nickname: payload.nickname,
+            role: payload.role,
+            owner: payload.owner,
             type: 'refresh',
             kid
         };
         const newRefreshToken = await createJWT(newRefreshTokenPayload, env.JWT_SECRET);
 
-        const response = jsonResponse({ accessToken: `Bearer ${newAccessToken}` }, 200, request, env);
+        const response = jsonResponse({
+            accessToken: `Bearer ${newAccessToken}`,
+            user: {
+                username: payload.username,
+                nickname: payload.nickname,
+                role: payload.role,
+                owner: payload.owner
+            }
+        }, 200, request, env);
         response.headers.append('Set-Cookie', `refreshToken=${newRefreshToken}; HttpOnly; Secure; SameSite=Strict; Path=/api/refreshToken; Max-Age=2592000`);
 
         return response;
@@ -188,18 +222,16 @@ export async function handleRefreshToken(request, env) {
     }
 }
 
-// ---------- Token 验证接口 ----------
 export async function handleValidateToken(request, env) {
     const validation = await validateServerToken(request.headers.get('Authorization'), env);
     return jsonResponse(
-        validation.isValid ? { valid: true } : validation.response,
+        validation.isValid ? { valid: true, user: validation.payload } : validation.response,
         validation.status || 200,
         request,
         env
     );
 }
 
-// ---------- 登出 ----------
 export async function handleLogout(request, env) {
     await bumpKeyGen(env);
     const response = jsonResponse({ success: true }, 200, request, env);

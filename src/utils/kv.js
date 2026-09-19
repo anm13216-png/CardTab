@@ -42,14 +42,65 @@ export function normalizeCategories(categories) {
     return categories;
 }
 
-export async function readLinksKv(env) {
-    const DEFAULT_USER = getDefaultUser();
+export async function getUsersKv(env) {
+    let usersJson = null;
+    try {
+        usersJson = await env.CARD_ORDER.get('sys_users');
+    } catch (e) {
+        console.error("KV read sys_users failed:", e);
+    }
+    
+    if (usersJson) {
+        try {
+            const list = JSON.parse(usersJson);
+            if (Array.isArray(list) && list.length > 0) return list;
+        } catch {}
+    }
+
+    const superAdminUsername = env.ADMIN_USERNAME || 'admin';
+    const superAdminPassword = env.ADMIN_PASSWORD || 'admin123';
+    const defaultUsers = [
+        {
+            username: superAdminUsername,
+            password: superAdminPassword,
+            nickname: '超级管理员',
+            role: 'super_admin',
+            owner: null,
+            createdAt: Date.now()
+        }
+    ];
+
+    try {
+        await env.CARD_ORDER.put('sys_users', JSON.stringify(defaultUsers));
+    } catch (e) {
+        console.error("KV save sys_users default failed:", e);
+    }
+
+    return defaultUsers;
+}
+
+export async function saveUsersKv(env, users) {
+    await env.CARD_ORDER.put('sys_users', JSON.stringify(users));
+}
+
+export async function readLinksKvForScope(env, scope, owner) {
+    let dataKey = 'nav_data_guest';
+    if (scope === 'authed' && owner) {
+        dataKey = `nav_data_${owner}`;
+    }
+
     let dataStr = null;
     try {
-        dataStr = await env.CARD_ORDER.get(DEFAULT_USER);
+        dataStr = await env.CARD_ORDER.get(dataKey);
+        if (!dataStr) {
+            const legacyUser = getDefaultUser();
+            const legacyData = await env.CARD_ORDER.get(legacyUser);
+            if (legacyData) dataStr = legacyData;
+        }
     } catch (e) {
-        console.error("KV read failed:", e);
+        console.error("KV read links failed for key " + dataKey, e);
     }
+
     const { data } = safeJsonParse(dataStr, DEFAULT_INITIAL_DATA);
     if (data && data.categories) {
         data.categories = normalizeCategories(data.categories);
@@ -58,6 +109,15 @@ export async function readLinksKv(env) {
         }
     }
     return data || DEFAULT_INITIAL_DATA;
+}
+
+export async function saveLinksKvForOwner(env, owner, categoriesData) {
+    const dataKey = owner === 'guest' ? 'nav_data_guest' : `nav_data_${owner}`;
+    await env.CARD_ORDER.put(dataKey, JSON.stringify(categoriesData));
+}
+
+export async function readLinksKv(env) {
+    return readLinksKvForScope(env, 'anon', null);
 }
 
 export function filterPublic(categories) {
@@ -80,4 +140,4 @@ export async function readJsonBody(request, maxBytes = 8 * 1024 * 1024) {
     catch { return { ok: false, reason: "BAD_JSON" }; }
 }
 
-export { EMPTY_DATA };
+export { EMPTY_DATA, DEFAULT_INITIAL_DATA };

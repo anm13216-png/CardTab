@@ -1,26 +1,30 @@
 import { validateServerToken } from './auth.js';
 import { handleSmartBackup } from './backup.js';
 import { corsHeaders, jsonResponse } from '../utils/response.js';
-import { readLinksKv, filterPublic, readJsonBody } from '../utils/kv.js';
-import { getDefaultUser } from '../utils/config.js';
-import { getDataRev, bumpRev, cacheKeyFor, sendCached, CACHE, ctxSafePut } from '../utils/cache.js';
+import { readLinksKvForScope, saveLinksKvForOwner, filterPublic, readJsonBody } from '../utils/kv.js';
+import { getDataRev, bumpRev, cacheKeyFor, sendCached, CACHE } from '../utils/cache.js';
 import { validateCategories, sanitizeCategories } from '../utils/validate.js';
 
-// ---------- 获取书签 ----------
 export async function handleGetLinks(request, env, ctx) {
     const url = new URL(request.url);
     const authHeader = request.headers.get('Authorization');
 
     let scope = 'anon';
+    let userOwner = null;
+    let userPayload = null;
+
     if (authHeader) {
         const v = await validateServerToken(authHeader, env);
-        if (v.isValid) scope = 'authed';
+        if (v.isValid) {
+            scope = 'authed';
+            userPayload = v.payload;
+            userOwner = v.payload.owner || v.payload.username;
+        }
     }
 
     const rev = scope === 'anon' ? await getDataRev(env) : '0';
-    const cacheKey = cacheKeyFor(url, rev, scope);
+    const cacheKey = cacheKeyFor(url, rev, scope + '_' + (userOwner || 'guest'));
 
-    // 边缘缓存命中 → 0 KV 读
     if (scope === 'anon') {
         const hit = await CACHE.match(cacheKey);
         if (hit) {
@@ -30,7 +34,7 @@ export async function handleGetLinks(request, env, ctx) {
         }
     }
 
-    const data = await readLinksKv(env);
+    const data = await readLinksKvForScope(env, scope, userOwner);
 
     if (data && data.categories) {
         for (const name in data.categories) {
@@ -44,14 +48,14 @@ export async function handleGetLinks(request, env, ctx) {
     }
 
     if (scope === 'authed') {
-        return sendCached(JSON.stringify(data), request, cacheKey, false, corsHeaders(request, env));
+        const resData = { ...data, currentUser: userPayload };
+        return sendCached(JSON.stringify(resData), request, cacheKey, false, corsHeaders(request, env));
     }
 
     const publicData = data ? { categories: filterPublic(data.categories) } : { categories: {} };
     return sendCached(JSON.stringify(publicData), request, cacheKey, true, corsHeaders(request, env));
 }
 
-// ---------- 保存数据 ----------
 export async function handleSaveData(request, env, ctx) {
     const validation = await validateServerToken(request.headers.get('Authorization'), env);
     if (!validation.isValid) return jsonResponse(validation.response, validation.status, request, env);
@@ -63,15 +67,34 @@ export async function handleSaveData(request, env, ctx) {
     const check = validateCategories(categories);
     if (!check.ok) return jsonResponse({ error: 'INVALID_DATA', detail: check.reason }, 422, request, env);
 
-    const DEFAULT_USER = getDefaultUser();
+    const userOwner = validation.payload.owner || validation.payload.username;
 
-    // 智能备份（异步，不阻塞主请求）
-    const currentData = await env.CARD_ORDER.get(DEFAULT_USER);
+    const currentData = await env.CARD_ORDER.get(`nav_data_${userOwner}`);
     if (currentData) {
         ctx.waitUntil(handleSmartBackup(env, currentData));
     }
 
-    await env.CARD_ORDER.put(DEFAULT_USER, JSON.stringify({ categories: sanitizeCategories(categories) }));
+    await saveLinksKvForOwner(env, userOwner, { categories: sanitizeCategories(categories) });
+    const rev = await bumpRev(env);
+    return jsonResponse({ success: true, rev }, 200, request, env);
+}
+
+export async function handleSaveDefaultView(request, env, ctx) {
+    const validation = await validateServerToken(request.headers.get('Authorization'), env);
+    if (!validation.isValid) return jsonResponse(validation.response, validation.status, request, env);
+
+    if (validation.payload.role !== 'super_admin') {
+        return jsonResponse({ error: 'Forbidden', message: '仅超级管理员可以编辑默认初始化界面' }, 403, request, env);
+    }
+
+    const body = await readJsonBody(request);
+    if (!body.ok) return jsonResponse({ error: body.reason }, body.reason === 'TOO_LARGE' ? 413 : 400, request, env);
+
+    const categories = body.data.categories || {};
+    const check = validateCategories(categories);
+    if (!check.ok) return jsonResponse({ error: 'INVALID_DATA', detail: check.reason }, 422, request, env);
+
+    await saveLinksKvForOwner(env, 'guest', { categories: sanitizeCategories(categories) });
     const rev = await bumpRev(env);
     return jsonResponse({ success: true, rev }, 200, request, env);
 }
