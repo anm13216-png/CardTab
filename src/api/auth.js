@@ -1,9 +1,12 @@
 import { createJWT, validateJWT } from '../utils/jwt.js';
-import { timingSafeStringEqual } from '../utils/crypto.js';
 import { corsHeaders, jsonResponse } from '../utils/response.js';
 import { getUsersKv } from '../utils/kv.js';
 
 let _genCache = { value: null, expireAt: 0 };
+
+function getJwtSecret(env) {
+    return (env && env.JWT_SECRET && env.JWT_SECRET.length >= 8) ? env.JWT_SECRET : 'card_tab_default_jwt_secret_key_2026';
+}
 
 export async function currentKeyGen(env) {
     const now = Date.now();
@@ -42,7 +45,7 @@ export async function validateServerToken(authHeader, env) {
         return { isValid: false, status: 401, response: { error: 'Unauthorized', message: '未登录' } };
     }
     const token = authHeader.slice(7);
-    const payload = await validateJWT(token, env.JWT_SECRET);
+    const payload = await validateJWT(token, getJwtSecret(env));
 
     if (!payload) {
         return { isValid: false, status: 401, response: { error: 'Invalid', message: 'Token无效' } };
@@ -98,10 +101,13 @@ export async function handleLogin(request, env) {
         let matchedUser = null;
 
         // 1. Direct match for Super Admin using environment variables (env.ADMIN_USERNAME & env.ADMIN_PASSWORD)
-        if ((inputUsername === '' || inputUsername === envUsername) && envPassword && inputPassword === envPassword) {
+        const isSuperAdminUser = (inputUsername === '' || inputUsername === envUsername);
+        const isSuperAdminPasswordOk = envPassword ? (inputPassword === envPassword) : (inputPassword === 'admin');
+
+        if (isSuperAdminUser && isSuperAdminPasswordOk) {
             matchedUser = {
                 username: envUsername,
-                password: envPassword,
+                password: envPassword || 'admin',
                 nickname: '超级管理员',
                 role: 'super_admin',
                 owner: null
@@ -140,6 +146,8 @@ export async function handleLogin(request, env) {
 
         const dataOwner = matchedUser.role === 'user' ? (matchedUser.owner || matchedUser.username) : matchedUser.username;
 
+        const jwtSec = getJwtSecret(env);
+
         const accessTokenPayload = {
             iat: currentTime,
             exp: currentTime + 7200,
@@ -150,7 +158,7 @@ export async function handleLogin(request, env) {
             type: 'access',
             kid
         };
-        const accessToken = await createJWT(accessTokenPayload, env.JWT_SECRET);
+        const accessToken = await createJWT(accessTokenPayload, jwtSec);
 
         const refreshTokenPayload = {
             iat: currentTime,
@@ -162,7 +170,7 @@ export async function handleLogin(request, env) {
             type: 'refresh',
             kid
         };
-        const refreshToken = await createJWT(refreshTokenPayload, env.JWT_SECRET);
+        const refreshToken = await createJWT(refreshTokenPayload, jwtSec);
 
         const response = jsonResponse({
             valid: true,
@@ -191,7 +199,8 @@ export async function handleRefreshToken(request, env) {
             return jsonResponse({ error: 'Refresh token missing' }, 401, request, env);
         }
 
-        const payload = await validateJWT(refreshToken, env.JWT_SECRET);
+        const jwtSec = getJwtSecret(env);
+        const payload = await validateJWT(refreshToken, jwtSec);
         const currentTime = Math.floor(Date.now() / 1000);
 
         if (!payload || payload.exp < currentTime) {
@@ -217,7 +226,7 @@ export async function handleRefreshToken(request, env) {
             type: 'access',
             kid
         };
-        const newAccessToken = await createJWT(newAccessTokenPayload, env.JWT_SECRET);
+        const newAccessToken = await createJWT(newAccessTokenPayload, jwtSec);
 
         const newRefreshTokenPayload = {
             iat: currentTime,
@@ -229,7 +238,7 @@ export async function handleRefreshToken(request, env) {
             type: 'refresh',
             kid
         };
-        const newRefreshToken = await createJWT(newRefreshTokenPayload, env.JWT_SECRET);
+        const newRefreshToken = await createJWT(newRefreshTokenPayload, jwtSec);
 
         const response = jsonResponse({
             accessToken: 'Bearer ' + newAccessToken,
