@@ -43,40 +43,42 @@ export function normalizeCategories(categories) {
 }
 
 export async function getUsersKv(env) {
+    const superAdminUsername = env.ADMIN_USERNAME || 'admin';
+    const superAdminPassword = env.ADMIN_PASSWORD || 'admin123';
+
+    let users = [];
     let usersJson = null;
     try {
         usersJson = await env.CARD_ORDER.get('sys_users');
     } catch (e) {
-        console.error("KV read sys_users failed:", e);
+        console.error('KV read sys_users failed:', e);
     }
     
     if (usersJson) {
         try {
             const list = JSON.parse(usersJson);
-            if (Array.isArray(list) && list.length > 0) return list;
+            if (Array.isArray(list)) users = list;
         } catch {}
     }
 
-    const superAdminUsername = env.ADMIN_USERNAME || 'admin';
-    const superAdminPassword = env.ADMIN_PASSWORD || 'admin123';
-    const defaultUsers = [
-        {
+    let superAdminIdx = users.findIndex(u => u.role === 'super_admin' || u.username === superAdminUsername);
+
+    if (superAdminIdx !== -1) {
+        users[superAdminIdx].username = superAdminUsername;
+        users[superAdminIdx].password = superAdminPassword;
+        users[superAdminIdx].role = 'super_admin';
+    } else {
+        users.unshift({
             username: superAdminUsername,
             password: superAdminPassword,
             nickname: '超级管理员',
             role: 'super_admin',
             owner: null,
             createdAt: Date.now()
-        }
-    ];
-
-    try {
-        await env.CARD_ORDER.put('sys_users', JSON.stringify(defaultUsers));
-    } catch (e) {
-        console.error("KV save sys_users default failed:", e);
+        });
     }
 
-    return defaultUsers;
+    return users;
 }
 
 export async function saveUsersKv(env, users) {
