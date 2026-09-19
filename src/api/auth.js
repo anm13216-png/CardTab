@@ -93,7 +93,7 @@ export async function handleLogin(request, env) {
 
         // 1. Direct check against env variables for Super Admin if username matches or is default
         const isEnvUserMatch = (username === '' || username === envUsername);
-        const isEnvPassMatch = await timingSafeStringEqual(password, envPassword);
+        const isEnvPassMatch = (envPassword && password === envPassword);
 
         if (isEnvUserMatch && isEnvPassMatch && envPassword) {
             matchedUser = users.find(u => u.role === 'super_admin' || u.username === envUsername);
@@ -111,8 +111,8 @@ export async function handleLogin(request, env) {
         // 2. Fallback check against stored users
         if (!matchedUser) {
             for (const u of users) {
-                const uMatch = await timingSafeStringEqual(username, u.username);
-                const pMatch = await timingSafeStringEqual(password, u.password);
+                const uMatch = (username === u.username);
+                const pMatch = (password === u.password);
                 if (uMatch && pMatch) {
                     matchedUser = u;
                     break;
