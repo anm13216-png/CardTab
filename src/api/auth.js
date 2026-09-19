@@ -80,26 +80,43 @@ export async function handleLogin(request, env) {
             return jsonResponse({ valid: false, locked: true, remaining: 0, retryAfter: waitSec }, 429, request, env);
         }
 
-        const body = await request.json();
+                const body = await request.json();
         let username = typeof body.username === 'string' ? body.username.trim() : '';
         const password = typeof body.password === 'string' ? body.password : '';
 
+        const envUsername = (env.ADMIN_USERNAME && env.ADMIN_USERNAME.trim()) ? env.ADMIN_USERNAME.trim() : 'admin';
+        const envPassword = env.ADMIN_PASSWORD || '';
+
         const users = await getUsersKv(env);
-        
-        // If username is empty or matches superAdmin default, and only 1 super_admin exists, allow matching super_admin by password or username
-        if (!username) {
-            const superAdmin = users.find(u => u.role === 'super_admin');
-            if (superAdmin) username = superAdmin.username;
-        }
 
         let matchedUser = null;
 
-        for (const u of users) {
-            const uMatch = await timingSafeStringEqual(username, u.username);
-            const pMatch = await timingSafeStringEqual(password, u.password);
-            if (uMatch && pMatch) {
-                matchedUser = u;
-                break;
+        // 1. Direct check against env variables for Super Admin if username matches or is default
+        const isEnvUserMatch = (username === '' || username === envUsername);
+        const isEnvPassMatch = await timingSafeStringEqual(password, envPassword);
+
+        if (isEnvUserMatch && isEnvPassMatch && envPassword) {
+            matchedUser = users.find(u => u.role === 'super_admin' || u.username === envUsername);
+            if (!matchedUser) {
+                matchedUser = {
+                    username: envUsername,
+                    password: envPassword,
+                    nickname: '超级管理员',
+                    role: 'super_admin',
+                    owner: null
+                };
+            }
+        }
+
+        // 2. Fallback check against stored users
+        if (!matchedUser) {
+            for (const u of users) {
+                const uMatch = await timingSafeStringEqual(username, u.username);
+                const pMatch = await timingSafeStringEqual(password, u.password);
+                if (uMatch && pMatch) {
+                    matchedUser = u;
+                    break;
+                }
             }
         }
 
