@@ -3,9 +3,10 @@ import { resolveConfig } from './utils/config.js';
 import { assertEnv, corsHeaders } from './utils/response.js';
 import { htmlMeta } from './utils/cache.js';
 import { handleLogin, handleRefreshToken, handleValidateToken, handleLogout } from './api/auth.js';
-import { handleGetLinks, handleSaveData } from './api/links.js';
+import { handleGetLinks, handleSaveData, handleSaveDefaultView } from './api/links.js';
 import { handleBackupData, handleExportData, handleImportData } from './api/backup.js';
 import { handleIconProxy } from './api/icon.js';
+import { handleGetUsers, handleAddUser, handleUpdateUser, handleDeleteUser } from './api/users.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -56,7 +57,6 @@ export default {
                     });
                 }
 
-                // 边缘缓存命中 → 0 回源
                 const cacheKey = new Request(url.origin + '/', { method: 'GET' });
                 const hit = await caches.default.match(cacheKey);
                 if (hit) return hit;
@@ -92,6 +92,26 @@ export default {
 
             if (url.pathname === '/api/saveData' && request.method === 'POST') {
                 return handleSaveData(request, env, ctx);
+            }
+
+            if (url.pathname === '/api/saveDefaultView' && request.method === 'POST') {
+                return handleSaveDefaultView(request, env, ctx);
+            }
+
+            if (url.pathname === '/api/users' && request.method === 'GET') {
+                return handleGetUsers(request, env);
+            }
+
+            if (url.pathname === '/api/users/add' && request.method === 'POST') {
+                return handleAddUser(request, env);
+            }
+
+            if (url.pathname === '/api/users/update' && request.method === 'POST') {
+                return handleUpdateUser(request, env);
+            }
+
+            if (url.pathname === '/api/users/delete' && request.method === 'POST') {
+                return handleDeleteUser(request, env);
             }
 
             if (url.pathname === '/api/backupData' && request.method === 'POST') {
