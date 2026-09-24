@@ -1139,7 +1139,7 @@
     }
 
     async function saveLinks() {
-        if (isEditMode) {
+        if (isLoggedIn || isEditMode) {
             await saveDataToServer('保存数据', categories);
         }
     }
